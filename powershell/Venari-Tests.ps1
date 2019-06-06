@@ -46,7 +46,7 @@ function Test-AppCredentials(){
     }
 }
 
-function Test-GetJob{
+function Test-GetAllJobs{
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true,ValueFromPipeline = $true)]        
@@ -62,8 +62,11 @@ function Test-GetJob{
     $auth.decodedaccesstoken.payload | fl
     $api=New-Object VenariAutomation -ArgumentList $auth,$apiUrl
     
-    $jobs=$api.GetJob()
-    $jobs | fl
+    $pager=$api.GetAllJobs($null,$null,$null)
+    while($pager.MoveNext()){
+        $jobs=$pager.GetResults()
+        $jobs | convertto-json
+    }
 }
 
 function Test-GetWorkspaces{
@@ -78,7 +81,7 @@ function Test-GetWorkspaces{
     $api=New-Object VenariAutomation -ArgumentList $auth,$apiUrl
     
     $workspaces=$api.GetWorkspaces($null)
-    $workspaces | fl    
+    $workspaces | convertto-json -depth 10
 }
 
 
@@ -94,7 +97,7 @@ function Test-GetWorkspaceByName{
     $auth=Get-Auth -configName $configName -apiUrl $apiUrl
     $api=New-Object VenariAutomation -ArgumentList $auth,$apiUrl
     $workspaces=$api.GetWorkspaces($WorkspaceName)
-    $workspaces | fl    
+    $workspaces | convertto-json -depth 10
 }
 
 function Test-GetFindings{
@@ -107,10 +110,37 @@ function Test-GetFindings{
     $auth=Get-Auth -configName $configName -apiUrl $apiUrl
     $api=New-Object VenariAutomation -ArgumentList $auth,$apiUrl
     $workspace=$api.GetWorkspaces($WorkspaceName)
-    $workspace.SummaryData | fl    
 
-    $findings=$api.GetFindings($workspace)
-    $findings | fl
+    $pager=$api.GetFindings($workspace.SummaryData.DBData,$null)
+    while($pager.MoveNext()){
+        $findings=$pager.GetResults()
+        $findings | convertto-json -depth 10
+
+    }
+}
+
+function Test-GetWorkspaceJobs{
+    param(
+        $configName,
+        $apiUrl,
+        $WorkspaceName
+    )
+    $auth=Get-Auth -configName $configName -apiUrl $apiUrl
+    $api=New-Object VenariAutomation -ArgumentList $auth,$apiUrl
+    $workspace=$api.GetWorkspaces($WorkspaceName)
+    
+    $constraints=new-object QueryConstraints
+    $constraints.sortDescending=$false
+    $pager=$api.GetJobsForWorkspace($workspace.Id,$null,$null,$constraints)
+    
+    while (
+        $pager.MoveNext()
+    ){
+        $jobs=$pager.GetResults();
+        write-host "Total Jobs: $($jobs.TotalCount)"
+        write-host "Data:"
+        $jobs | convertto-json -depth 10
+    }
 }
 
 function Get-Auth{

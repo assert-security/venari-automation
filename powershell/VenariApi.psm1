@@ -45,7 +45,7 @@ class Auth
             scope=$this.endpointInfo.scope
         }
         $secret=""
-        $result=Invoke-Api -endpoint $this.endpointInfo.tokenEndpoint -header $Headers -body $body;
+        $result=Invoke-Api -endpoint $this.endpointInfo.tokenEndpoint -header $Headers -parameters $body;
         if($result.statusCode -ne 200){
             throw "Failed to login "+$result.Data
         }
@@ -82,18 +82,17 @@ class VenariAutomation
             #check if we are about to expire within 5 minutes:
             $expDate=Convert-FromUnixTime $this.auth.decodedAccessToken.payload.exp
             $curDate=Get-Date
-            write-host "cur: $curDate exp: $expDate"
+            # write-host "cur: $curDate exp: $expDate"
             $ts = New-TimeSpan -Start $curDate -End  $expDate
             #Should re-authenticate using cached credentials or refresh token
-            if($ts -lt 5){
-                write-host "token expiring"
-            }
-            write-host "token expires: $($ts.Minutes)"
+            # if($ts -lt 5){
+            #     write-host "token expiring"
+            # }
+            # write-host "token expires: $($ts.Minutes)"
             $curDate=Get-Date 
-            write-host "date $curDate"
+            # write-host "date $curDate"
         }        
-        $bodyText=($body | convertto-json)
-        $result=Invoke-Api -endpoint $endpoint -headers $headers -body $bodyText -method $method
+        $result=Invoke-Api -endpoint $endpoint -headers $headers -parameters $body -method $method
         if($result.error){
             throw $result.error
         }
@@ -101,18 +100,22 @@ class VenariAutomation
     }
 
 
-    [Object] GetJob()
+    [DataPager] GetAllJobs([object]$status,[string]$nodeName,[QueryConstraints]$constraints)
     {
-        $result=$this.invokeApi("$($this.venariUrl)/api/jobs", @{Skip="0";Take="99999"},"POST")
-        if($result.error){
-            throw $result.error
+        $props=$this.getQueryProperties()
+        $props.NodeName=$nodeName
+        $props.Status=$status
+
+        if($constraints){
+            $constraints.addToHashtable($props);
         }
-        return $result.data
+        $pager=New-Object DataPager -ArgumentList $this,$props,"$($this.venariUrl)/api/jobs","POST"
+        return $pager;
     }
 
     [Object] GetWorkspaces([string] $name){
         if($name -eq "" ){
-            $result=$this.invokeApi("$($this.venariUrl)/api/workspace/summaries", @{Skip="0";Take="99999"},"GET")
+            $result=$this.invokeApi("$($this.venariUrl)/api/workspace/summaries", $null,"GET")
             if($result.error){
                 throw $result.error
             }
@@ -122,10 +125,40 @@ class VenariAutomation
         return $result.data
     }
 
-    [Object] GetFindings([object] $workspace){
+    <#
+    Returns the findings from the specified source. 
+    The source can be the DBData from a workspace
+    #>
+    [DataPager] GetFindings([object] $dbData,[QueryConstraints]$constraints){
+        $props=$this.getQueryProperties()
+        $props.DBData=$dbData
+        if($constraints){
+            $constraints.addToHashtable($props);
+        }
+        $pager=New-Object DataPager -ArgumentList $this,$props,"$($this.venariUrl)/api/findings/get","POST"
+        return $pager
+    }
 
-        return $this.invokeApi("$($this.venariUrl)/api/findings/get", 
-            @{DBData=$workspace.SummaryData.DBData;Skip="0";Take="100"},"POST")
+    [hashtable] getQueryProperties(){
+        $props=@{
+            QueryID= $null
+            Skip= 0
+            Take= 0
+        }
+        return $props
+    }
+    [DataPager] GetJobsForWorkspace([int]$workspaceId,[object]$status,[string]$nodeName,[QueryConstraints]$constraints)
+    {
+        $props=$this.getQueryProperties()
+        $props.WorkspaceID=$workspaceId
+        $props.NodeName=$nodeName
+        $props.Status=$status
+
+        if($constraints){
+            $constraints.addToHashtable($props);
+        }
+        $pager=New-Object DataPager -ArgumentList $this,$props,"$($this.venariUrl)/api/jobs","POST"
+        return $pager;
     }
 }
     function deleteAllJobs{
@@ -149,7 +182,7 @@ function Invoke-Api{
     param(
         $endpoint,
         $headers,
-        $body,
+        $parameters,
         $Method="POST"
     )
     try{
@@ -158,7 +191,18 @@ function Invoke-Api{
         }
         
         $data=""
-        $result=Invoke-WebRequest -Uri $endpoint -Headers $headers -Body $body -Method $method
+        if($method -eq "POST"){
+            if($headers."Content-Type" -eq "application/json"){
+                $bodyText=convertto-json $parameters
+            }else{
+                $bodyText=$parameters;
+            }
+            $result=Invoke-WebRequest -Uri $endpoint -Headers $headers -Body $bodyText -Method $method
+        }elseif($method -eq "GET"){
+            $result=Invoke-WebRequest -Uri $endpoint -Headers $headers -Method $method -Body $parameters
+        }else{
+            throw "Invalid Http Method"
+        }
         if($result.Content){
             
             $data=ConvertFrom-Json $result.Content 
@@ -202,43 +246,6 @@ function Get-TokenEndpoint{
    [AuthEndpointInfo] $info=new-object AuthEndpointInfo -ArgumentList $tokenEndoint,$idpInfo.scope,$idpInfo.clientId
    return $info
 
-}
-
-function Login-Application{
-    param(
-        [Parameter(Mandatory = $true,ValueFromPipeline = $true)]        
-        $idpInfo
-    )
-
-    # if($secureSecret){
-    #     $secret = (New-Object PSCredential "user",$secureSecret).GetNetworkCredential().Password
-    # }
-    #$secret=gc ~/assert-security/secrets/jobnode-client-secret
-    #$secret
-    #write-host "Getting Token Endpoint from: $($idpInfo.venariUri)"
-    #$tokenEndpoint=Get-TokenEndpoint -venariEndpoint $idpInfo.venariUri;
-    $tokenEndpoint=$idpInfo.tokenEndpoint
-    
-    write-host "token endpoint: $tokenEndpoint"
-    $headers =@{
-        Accept='application/json';
-        "Content-Type"='application/x-www-form-urlencoded';
-    }
-    $body=@{
-        grant_type="client_credentials";
-        client_secret=$idpInfo.clientSecret;
-        client_id=$idpInfo.clientId;
-        scope=$idpInfo.scope
-
-    }
-
-    $result=Invoke-Api -endpoint $tokenEndpoint -header $Headers -body $body;
-    if($result.statusCode -ne 200){
-        throw "Failed to login "+$result.Data
-    }
-    $this.accessToken=$result.data.access_token
-    $script:decodedAccessToken=decodeJwtToken -token $this.accessToken
-    return $script:decodedAccessToken
 }
 
 function Convert-FromUnixTime($unixTime){
@@ -291,7 +298,7 @@ function Login-Password{
         client_secret=$idpInfo.clientSecret;
         scope="openid profile "+$idpInfo.scope;
     }
-    $result=Invoke-Api -endpoint $tokenEndpoint.Uri -header $Headers -body $body;
+    $result=Invoke-Api -endpoint $tokenEndpoint.Uri -header $Headers -parameters $body;
     if($result.statusCode -ne 200){
         throw "Failed to login "+$result.Data
     }
@@ -301,4 +308,57 @@ function Login-Password{
     
 }
 
+class DataPager{
+    [hashtable] $properties
+    [string] $endpoint
+    [int] $numPerPage=10
+    [Object] $result
+    [int] $totalCount=0
+    [VenariAutomation] $api
 
+    DataPager([VenariAutomation]$api,[hashtable]$properties,[string]$endpoint,[string] $method){
+        $this.properties=$properties;
+        $this.endpoint=$endpoint;
+        $this.api=$api;
+    }
+
+    [object] GetResults(){
+        return $this.result.Data;
+    }
+
+    [boolean] MoveNext(){
+       if($this.properties.QueryID -eq $null){
+            $this.properties.Take=$this.numPerPage
+            $this.properties.Skip=0
+            $this.result=$this.api.invokeApi($this.endpoint,$this.properties,"POST");
+
+            $this.properties.QueryID=$this.result.Data.QueryID
+            $this.totalCount=$this.result.Data.TotalCount;
+            #increment skip by the number we read.
+            $this.properties.Skip+=$this.result.Data.Count;
+        }else{
+            if($this.properties.Skip -ge $this.totalCount){
+                return $false;
+            }
+            $this.result=$this.api.invokeApi($this.endpoint,$this.properties,"POST");
+            $this.properties.Skip+=$this.result.Data.Count;
+        }
+        return $this.result.statusCode -ne 204
+    }
+
+}
+
+class QueryConstraints{
+
+    [AllowNull()][string] $filter=[NullString]::Value
+    [AllowNull()][string] $sort= [NullString]::Value
+    [boolean] $sortDescending=$true
+    $SelectFieldPaths=$null
+
+    addToHashtable([hashtable]$tbl){
+        $tbl.Filter=$this.filter
+        $tbl.Sort=$this.sort
+        $tbl.sortDescending=$this.sortDescending
+        $tbl.SelectFieldPaths=$this.SelectFieldPaths
+    }
+}
