@@ -75,6 +75,28 @@ class VenariApi(object):
         endpoint = '/api/jobs'
         return self._request('POST', endpoint, json=json_data)
 
+    def get_scan_results(self):
+        """
+        :param:
+        :return:
+        """
+        json_data = dict(
+
+        )
+        endpoint = ''
+        return self._request('POST', endpoint, json=json_data)
+
+    def start_scan(self):
+        """
+        :param:
+        :return:
+        """
+        json_data = dict(
+
+        )
+        endpoint = ''
+        return self._request('POST', endpoint, json=json_data)
+
     def _request(self, method, endpoint, params=None, files=None, json=None, data=None, headers=None, stream=False):
         """
         Common handler for all HTTP requests, params are for GET and data for POST
