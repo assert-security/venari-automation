@@ -80,7 +80,7 @@ function Test-GetWorkspaces{
     $auth=Get-Auth -configName $configName -apiUrl $apiUrl
     $api=New-Object VenariAutomation -ArgumentList $auth,$apiUrl
     
-    $workspaces=$api.GetWorkspaces($null)
+    $workspaces=$api.GetWorkspaces()
     $workspaces | convertto-json -depth 10
 }
 
@@ -96,7 +96,7 @@ function Test-GetWorkspaceByName{
 
     $auth=Get-Auth -configName $configName -apiUrl $apiUrl
     $api=New-Object VenariAutomation -ArgumentList $auth,$apiUrl
-    $workspaces=$api.GetWorkspaces($WorkspaceName)
+    $workspaces=$api.GetWorkspaceByName($WorkspaceName)
     $workspaces | convertto-json -depth 10
 }
 
@@ -141,6 +141,24 @@ function Test-GetWorkspaceJobs{
         write-host "Data:"
         $jobs | convertto-json -depth 10
     }
+}
+
+function Test-GetJobTemplates{
+    param(
+        $configName,
+        $apiUrl,
+        $workSpaceName
+    )
+    $auth=Get-Auth -configName $configName -apiUrl $apiUrl
+    $api=New-Object VenariAutomation -ArgumentList $auth,$apiUrl
+    $workspace=$api.GetWorkspaceByName($WorkspaceName)
+    $dbid=[DBID]::FromDbData($workspace.SummaryData.DBData);
+    $pager=$api.GetJobTemplates($dbId,$null)
+    while($pager.MoveNext()){
+        $template=$pager.GetResults();
+        $template | convertto-json -depth 10
+    }
+    
 }
 
 function Get-Auth{

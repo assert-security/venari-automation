@@ -113,15 +113,16 @@ class VenariAutomation
         return $pager;
     }
 
-    [Object] GetWorkspaces([string] $name){
-        if($name -eq "" ){
-            $result=$this.invokeApi("$($this.venariUrl)/api/workspace/summaries", $null,"GET")
-            if($result.error){
-                throw $result.error
-            }
-        }else{
-            $result=$this.invokeApi("$($this.venariUrl)/api/workspace", @{Name="$Name"},"POST")
+    [Object] GetWorkspaces(){
+        $result=$this.invokeApi("$($this.venariUrl)/api/workspace/summaries", $null,"GET")
+        if($result.error){
+            throw $result.error
         }
+        return $result.data
+    }
+
+    [Object] GetWorkspaceByName([string] $name){
+        $result=$this.invokeApi("$($this.venariUrl)/api/workspace", @{Name="$Name"},"POST")
         return $result.data
     }
 
@@ -160,6 +161,19 @@ class VenariAutomation
         $pager=New-Object DataPager -ArgumentList $this,$props,"$($this.venariUrl)/api/jobs","POST"
         return $pager;
     }
+
+    [DataPager] GetJobTemplates([DBID]$dbId,[QueryConstraints]$constraints){
+        $props=$this.getQueryProperties()
+        $props.DBData=$dbId.getProps()
+
+        if($constraints){
+            $constraints.addToHashtable($props);
+        }
+        $pager=New-Object DataPager -ArgumentList $this,$props,"$($this.venariUrl)/api/job/templates/query","POST"
+        return $pager;
+
+    }
+
 }
     function deleteAllJobs{
         $jobs=getAllJobs
@@ -362,3 +376,38 @@ class QueryConstraints{
         $tbl.SelectFieldPaths=$this.SelectFieldPaths
     }
 }
+
+class DBID{
+    [string] $Id
+    [int] $Type
+
+    [hashtable] getProps(){
+        return @{DBID=$this.Id;DBType=$this.Type}
+    }
+
+    static [DBID] Create([string] $Id,[int]$Type){
+        $new= New-Object DBID 
+        $new.Id=$id;
+        $new.Type=$Type
+        return $new
+    }
+
+    static[DBID] FromDbData([hashtable]$dbData){
+        $new= New-Object DBID
+        $new.Id=$dbData.DBID
+        $new.Type=$dbData.DBType
+        return $new
+    }
+
+    static[DBID] FromDbData([PSCustomObject]$dbData){
+        $new= New-Object DBID
+        $new.Id=$dbData.DBID
+        $new.Type=$dbData.DBType
+        return $new
+
+    }
+    
+}
+
+
+
