@@ -75,15 +75,53 @@ class VenariApi(object):
         endpoint = '/api/jobs'
         return self._request('POST', endpoint, json=json_data)
 
-    def get_scan_results(self):
+    def get_all_scan_results(self):
         """
+        Return all workspace/app/scan historical finding detail summary.
         :param:
-        :return:
+        :return: Job ID, Scan Name, and Vulnerability Name
         """
         json_data = dict(
-
+            {
+                "QueryID": "string",
+                "DBData": {
+                    "DBID": "string",
+                    "DBType": 0
+                },
+                "Severity": 0,
+                "States": [
+                    0
+                ],
+                "RuleInputFilter": {
+                    "RuleUniqueName": "string",
+                    "RuleInputType": 0,
+                    "TrafficCollectionDBID": "string",
+                    "TrafficSequenceSummaryID": 0,
+                    "WorkflowUniqueID": "string",
+                    "FingerprintDBName": "string"
+                },
+                "SortDescending": True,
+                "Skip": 0,
+                "Take": 999,
+            }
         )
-        endpoint = ''
+        endpoint = '/api/findings/get'
+        return self._request('POST', endpoint, json=json_data)
+
+    def get_detail_scan_findings(self):
+        """
+        Used to query individual workspace/app/scan finding details.  Need to filter on Severity, Name, Location (URL).
+        :param NOT SURE
+        :return Workspace, severity, name and location
+        """
+        json_data = dict(
+            {
+                "WorkspaceID": 1,
+                "Skip": 0,
+                "Take": 999,
+            }
+        )
+        endpoint = '/api/findings/detail'
         return self._request('POST', endpoint, json=json_data)
 
     def start_scan(self):
@@ -180,3 +218,35 @@ class VenariResponse(object):
             return json.dumps(self.data, sort_keys=True, indent=4, separators=(',', ': '))
         else:
             return json.dumps(self.data)
+
+
+if __name__ == '__main__':
+    #Initialize your Venari IDP
+    token_url = 'https://host.docker.internal:9002'
+
+    # Initialize your Venari api
+    api_url = 'https://host.docker.internal:9000'
+
+
+    def get_venari_token():
+        api = VenariApi(api_url=api_url, token_url=token_url, username='admin', password='password', verify_ssl=False)
+        response = api.get_access_token()
+        token = response.data['access_token']
+        return token
+
+    print(get_venari_token())
+
+    def get_venari_jobs():
+        api = VenariApi(api_url=api_url, token_url=token_url, username='admin', password='password', verify_ssl=False, token=get_venari_token())
+        response = api.get_job_listing()
+        return response
+
+    print(get_venari_jobs())
+
+    def get_venari_scan_results():
+        api = VenariApi(api_url=api_url, token_url=token_url, username='admin', password='password', verify_ssl=False,
+                        token=get_venari_token())
+        response = api.get_detail_scan_findings()
+        return response
+
+    print(get_venari_scan_results())
