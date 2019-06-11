@@ -11,7 +11,55 @@ __since__ = "0.0.1"
 import urllib3
 import json
 import requests
+import types
 from venariapi import __version__ as version
+
+'''
+class SummaryData(object):
+    def __init__(self,Name,RuleUniqueID:str,Severity,State,RuleType,Behaviors,DefaultSort,Properties):
+        #self.Behaviors=BehaviorSettingsData
+        self.Name=Name
+
+    @classmethod
+    def from_json(cls, json_data: dict):
+        return cls(**json_data)
+
+class BehaviorSettingsData(object):
+    def __init__(self,DisplayText,UniqueName,Enabled):
+        self.DisplayText:DisplayText
+        self.UniqueName:UniqueName
+        self.Enabled:Enabled
+    
+    @classmethod
+    def from_json(cls, json_data: dict):
+        return cls(**json_data)
+
+class Finding(object):
+
+    def __init__(self, DetailID: str,ID: str,UniqueID:str,Version:str,SummaryData):
+        self.DetailID=DetailID
+        self.ID=ID
+        self.UniqueID=UniqueID
+        self.Version=Version
+        self.SummaryData=SummaryData
+    @classmethod
+    def from_json(cls, json_data: dict):
+        json_data["SummaryData"]=SummaryData.from_json(json_data["SummaryData"])
+        f= cls(**json_data)
+        return f
+
+
+class DBData(object):
+    def __init__ (self,id,type):
+        self.DBID=id
+        self.DBType=type
+
+    @staticmethod 
+    def from_dict(json:dict):
+        data=DBData(json["DBID"],json["DBType"])
+        return data
+'''        
+   
 
         
 def simple_request(method, endpoint, params=None, files=None, json=None, data=None, headers=None, stream=False,verify_ssl=False):
@@ -139,7 +187,7 @@ class VenariApi(object):
         endpoint = '/api/jobs'
         return self._request('POST', endpoint, json=json_data)
 
-    def get_all_scan_results(self):
+    def get_findings_for_workspace(self,dbdata:DBData):
         """
         Return all workspace/app/scan historical finding detail summary.
         :param:
@@ -147,22 +195,9 @@ class VenariApi(object):
         """
         json_data = dict(
             {
-                "QueryID": "string",
                 "DBData": {
-                    "DBID": "string",
-                    "DBType": 0
-                },
-                "Severity": 0,
-                "States": [
-                    0
-                ],
-                "RuleInputFilter": {
-                    "RuleUniqueName": "string",
-                    "RuleInputType": 0,
-                    "TrafficCollectionDBID": "string",
-                    "TrafficSequenceSummaryID": 0,
-                    "WorkflowUniqueID": "string",
-                    "FingerprintDBName": "string"
+                    "DBID": dbdata.DBID,
+                    "DBType": dbdata.DBType
                 },
                 "SortDescending": True,
                 "Skip": 0,
@@ -172,7 +207,7 @@ class VenariApi(object):
         endpoint = '/api/findings/get'
         return self._request('POST', endpoint, json=json_data)
 
-    def get_detail_scan_findings(self):
+    def get_detail_scan_findings(self,db:DBData):
         """
         Used to query individual workspace/app/scan finding details.  Need to filter on Severity, Name, Location (URL).
         :param NOT SURE
@@ -250,6 +285,8 @@ class VenariApi(object):
         except requests.exceptions.RequestException as e:
             return VenariResponse(message='There was an error while handling the request. {0}'.format(e),
                                   success=False)
+
+
 
 
 class VenariResponse(object):

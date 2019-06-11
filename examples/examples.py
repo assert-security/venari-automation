@@ -1,5 +1,7 @@
 import json
-from venariapi.venari import VenariApi,VenariAuth
+
+from venariapi.venari import VenariApi,VenariAuth,DBData,Finding
+
 auth=VenariAuth('https://host.docker.internal:9002')
 api_endpoint='https://host.docker.internal:9000'
 
@@ -8,21 +10,22 @@ def init():
     # initializing standalone api
     auth.login_password('admin','password')
 
-def getWorkspaces():
+def get_workspaces():
     init()
     response=api.get_workspaces()
     print(response)
     return response
 
-def getWorkspaceByName(workspaceName):
+def get_workspace_by_name(workspaceName):
     init()
     response=api.get_workspace_by_name(workspaceName)
     #print(response)
     return response
-    
 
-def getJobsForWorkspace(workspaceName):
-    w=getWorkspaceByName(workspaceName)
+
+
+def get_jobs_for_workspace(workspaceName):
+    w=get_workspace_by_name(workspaceName)
     #print(w)
     txt=w.data_json(True)
     print(txt)
@@ -30,4 +33,16 @@ def getJobsForWorkspace(workspaceName):
     jobs=api.get_jobs_for_workspace(w.data["ID"])
     print(jobs.data_json(True))
 
+def get_workspace_findings(workspaceName):
+    w=get_workspace_by_name(workspaceName)
+    jobs=api.get_findings_for_workspace(w.data["ID"])
+
+def get_findings_for_workspace(workspaceName):
+    w=get_workspace_by_name(workspaceName)
+    db=DBData.from_dict(w.data["SummaryData"]["DBData"])
+    findings=api.get_findings_for_workspace(db)
+    items = (x for x in findings.data['Items'])
+    for f in items:
+        sd=f["SummaryData"]
+        print("{0} [{1}]".format(sd["Name"],sd["Properties"]["location"]))
 
