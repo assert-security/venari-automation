@@ -6,11 +6,11 @@ import json
 grant_type = "password"
 username = "admin"
 password = "password"
-token_url = "https://host.docker.internal:9002/connect/token"
+token_url = "https://host.docker.internal:10002/connect/token"
 
 # not used.
 callback_uri = "venari://idpCallback"
-test_api_url = "https://host.docker.internal:9000"
+test_api_url = "https://host.docker.internal:10000"
 client_id = 'venari'
 client_secret = '3cd83edf-38d7-45d0-8783-788cad36ae5f'
 
