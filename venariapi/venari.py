@@ -12,7 +12,10 @@ import urllib3
 import json
 import requests
 import types
+from request_helper import *
+from venari_auth import *
 from venariapi import __version__ as version
+import argparse
 
 '''
 class SummaryData(object):
@@ -48,7 +51,7 @@ class Finding(object):
         f= cls(**json_data)
         return f
 
-
+'''        
 class DBData(object):
     def __init__ (self,id,type):
         self.DBID=id
@@ -58,81 +61,6 @@ class DBData(object):
     def from_dict(json:dict):
         data=DBData(json["DBID"],json["DBType"])
         return data
-'''        
-   
-
-        
-def simple_request(method, endpoint, params=None, files=None, json=None, data=None, headers=None, stream=False,verify_ssl=False):
-    """
-    Common handler for all HTTP requests, params are for GET and data for POST
-    :param params, files, json, data, headers, stream, method, endpoint
-    :return response from HTTP request
-    """
-    if not params:
-        params = {}
-    if not headers:
-        headers = {'Accept': 'application/json'}
-    try:
-        response = requests.request(method=method, url=endpoint, params=params, files=files,
-                                    headers=headers, json=json, data=data,
-                                    verify=verify_ssl, stream=stream)
-
-        try:
-            response.raise_for_status()
-            response_code = response.status_code
-            success = True if response_code // 100 == 2 else False
-            if response.text:
-                try:
-                    data = response.json()
-                except ValueError:
-                    data = response.content
-            else:
-                data = ''
-            return VenariResponse(
-                success=success, response_code=response_code, data=data)
-
-        except ValueError as e:
-            return VenariResponse(success=False, message="JSON response could not be decoded {0}.".format(e))
-        except requests.exceptions.HTTPError as e:
-            if response.status_code == 401:
-                return VenariResponse(
-                    message='There was an error handling your request. {} {}'.format(response.content, e),
-                    success=False)
-    except requests.exceptions.SSLError as e:
-        return VenariResponse(message='An SSL error occurred. {0}'.format(e), success=False)
-    except requests.exceptions.ConnectionError as e:
-        return VenariResponse(message='A connection error occurred. {0}'.format(e), success=False)
-    except requests.exceptions.Timeout:
-        return VenariResponse(message='The request timed out after ' + str(self.timeout) + ' seconds.',
-                                success=False)
-    except requests.exceptions.RequestException as e:
-        return VenariResponse(message='There was an error while handling the request. {0}'.format(e),
-                                success=False)
-
-class VenariAuth(object):
-
-    def __init__(self,token_url):
-        self.token_url=token_url
-
-    #Loging using password flow. This will be deprecated in 1.2
-    def login_password(self,username,password):
-        self.grant_type = 'password'
-        self.client_id = 'venari'
-        """
-        Used for obtaining an oauth access token from the OpenId node to impersonate a user
-        :param: grant_type, client_id, username, password
-        :return: access_token
-        """
-        endpoint = self.token_url+'/connect/token'
-        data = dict(
-            username=username,
-            password=password,
-            client_id=self.client_id,
-            grant_type=self.grant_type
-            )
-        response=simple_request('POST', endpoint, data=data)
-        self.access_token = response.data['access_token']
-
 
 class VenariApi(object):
     def __init__(self, auth, api_url, verify_ssl=True, timeout=60, user_agent=None,
@@ -186,6 +114,15 @@ class VenariApi(object):
         )
         endpoint = '/api/jobs'
         return self._request('POST', endpoint, json=json_data)
+    def get_jobs(self):
+        json_data=dict({
+            "SortDescending": True,
+            "Skip": 0,
+            "Take": 9999,
+        })
+
+        endpoint='/api/jobs'
+        return self._request('POST', endpoint, json=json_data)
 
     def get_findings_for_workspace(self,dbdata:DBData):
         """
@@ -222,6 +159,15 @@ class VenariApi(object):
         )
         endpoint = '/api/findings/detail'
         return self._request('POST', endpoint, json=json_data)
+
+    def get_templates_for_workspace(self,db:DBData):
+        json_data=dict({
+            "DBID":db.DBID,
+            "DBType":db.DBType
+        })
+        endpoint = '/api/job/templates'
+        return self._request('POST',endpoint,json=json_data)
+
 
     def start_scan(self):
         """
@@ -287,58 +233,3 @@ class VenariApi(object):
                                   success=False)
 
 
-
-
-class VenariResponse(object):
-    """Container for all Venari API responses, even errors."""
-
-    def __init__(self, success, message='OK', response_code=-1, data=None):
-        self.message = message
-        self.success = success
-        self.response_code = response_code
-        self.data = data
-
-    def __str__(self):
-        if self.data:
-            return str(self.data)
-        else:
-            return self.message
-
-    def data_json(self, pretty=False):
-        """Returns the data as a valid JSON string."""
-        if pretty:
-            return json.dumps(self.data, sort_keys=True, indent=4, separators=(',', ': '))
-        else:
-            return json.dumps(self.data)
-
-
-if __name__ == '__main__':
-    #Initialize your Venari IDP
-    token_url = 'https://host.docker.internal:9002'
-
-    # Initialize your Venari api
-    api_url = 'https://host.docker.internal:9000'
-
-
-    def get_venari_token():
-        api = VenariApi(api_url=api_url, token_url=token_url, username='admin', password='password', verify_ssl=False)
-        response = api.get_access_token()
-        token = response.data['access_token']
-        return token
-
-    print(get_venari_token())
-
-    def get_venari_jobs():
-        api = VenariApi(api_url=api_url, token_url=token_url, username='admin', password='password', verify_ssl=False, token=get_venari_token())
-        response = api.get_job_listing()
-        return response
-
-    print(get_venari_jobs())
-
-    def get_venari_scan_results():
-        api = VenariApi(api_url=api_url, token_url=token_url, username='admin', password='password', verify_ssl=False,
-                        token=get_venari_token())
-        response = api.get_detail_scan_findings()
-        return response
-
-    print(get_venari_scan_results())
