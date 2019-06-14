@@ -3,7 +3,7 @@ import requests
 
 class RequestHelper(object):
     @staticmethod
-    def request(method, endpoint, params=None, files=None, json=None, data=None, headers=None, stream=False,verify_ssl=False):
+    def request(method, endpoint, params=None, authToken=None, files=None, json=None, data=None, headers=None, stream=False,verify_ssl=True):
         """
         Common handler for all HTTP requests, params are for GET and data for POST
         :param params, files, json, data, headers, stream, method, endpoint
@@ -13,6 +13,10 @@ class RequestHelper(object):
             params = {}
         if not headers:
             headers = {'Accept': 'application/json'}
+
+        if authToken:
+            headers = {'Authorization': 'Bearer ' + authToken}
+
         try:
             response = requests.request(method=method, url=endpoint, params=params, files=files,
                                         headers=headers, json=json, data=data,
@@ -49,6 +53,7 @@ class RequestHelper(object):
         except requests.exceptions.RequestException as e:
             return VenariResponse(message='There was an error while handling the request. {0}'.format(e),
                                     success=False)
+
 class VenariResponse(object):
     """Container for all Venari API responses, even errors."""
 

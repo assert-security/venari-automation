@@ -1,135 +1,182 @@
 from venari import *
 import json
 import sys
+import abc
 
 
+class CommandArgProcessor(object):
+    def _init_api(self,args):
+        self.auth = VenariAuth(args.token_endpoint,verify_ssl=not args.ignore_ssl)
+        self.auth.login_password('admin', 'password')        
+        self.api=VenariApi(self.auth,args.api_endpoint,verify_ssl=not args.ignore_ssl)
+    
+    def _add_api_args(self,parser):
+        #These are required options that all commands need. If we set them
+        #at the top level parser, then the parser exepects them to appear before the command,
+        #which we don't want.
+        parser.add_argument('token_endpoint', type=str, help='Idp Token Endpoint')
+        parser.add_argument('api_endpoint', type=str, help='Venari API Endpoint')
+        parser.add_argument('--ignore_ssl',action='store_true',help="Don't verify ssl certificates")
 
-def get_jobs_for_workspace(workspaceName):
-    w = get_workspace_by_name(workspaceName)
-    # print(w)
-    txt = w.data_json(True)
-    print(txt)
-    # print(txt)
-    jobs = api.get_jobs_for_workspace(w.data["ID"])
-    print(jobs.data_json(True))
+    @abc.abstractmethod
+    def proces(self,args):
+        print('process')
 
+    def build_commands():
+        pass
+    def _add_common_args(self,parser):
+        pass
 
-def get_workspace_findings(workspaceName):
-    w = get_workspace_by_name(workspaceName)
-    jobs = api.get_findings_for_workspace(w.data["ID"])
+class TemplateCommand(CommandArgProcessor):
 
+    def build(self, parent_parser):
+        parser=parent_parser.add_parser('template',help="Operations on templates")
+        sub_parser=parser.add_subparsers(help='command help',title="Findings Commands")
 
-def get_findings_for_workspace(workspaceName):
-    w = get_workspace_by_name(workspaceName)
-    db = DBData.from_dict(w.data["SummaryData"]["DBData"])
-    findings = api.get_findings_for_workspace(db)
-    items = (x for x in findings.data['Items'])
-    for f in items:
-        sd = f["SummaryData"]
-        print("{0} [{1}]".format(sd["Name"], sd["Properties"]["location"]))
+        list_parser=sub_parser.add_parser('list')
+        list_parser.set_defaults(func=self._list_templates)
 
-class TemplateCommand(object):
-    def __init__(self,api:VenariApi):
-            self.api=api
+        list_parser.add_argument('--workspace',action='store')
+        self._add_api_args(list_parser)   
 
-    def process(self,args):
-        #grab the workspace so we can grab it's db id.
+    def _list_templates(self,args):
+        self._init_api(args)
+        #grab the workspace so we can grab its db id.
         workspace=self.api.get_workspace_by_name(args.workspace)
         db=DBData.from_dict(workspace.data["SummaryData"]["DBData"])
 
-        if(args.list):
-            t=self.api.get_templates_for_workspace(db)
-            print(t.data_json(True))
+        t=self.api.get_templates_for_workspace(db)
+        print(t.data_json(True))
+
+class FindingsCommands(CommandArgProcessor):
+    def build(self,sub_parsers):
+        #add list processor
+        parser=sub_parsers.add_parser('finding',help="Findings operations")
+        subparser=parser.add_subparsers(help='command help',title="Findings Commands")
+        #list command
+        list_parser=subparser.add_parser('list')
+        list_parser.set_defaults(func=self.list_findings)
+        group=list_parser.add_mutually_exclusive_group(required=True)
+        group.add_argument('--workspace',action='store')
+        group.add_argument('--jobid',action='store')
+        
+        super()._add_api_args(list_parser)
+
+    def list_findings(self,args):
+        self._init_api(args)
+
+        if(not args.workspace):
+            #list by workspace
+            query=self.api.get_findings_for_job(args.jobid)
+        else:
+            w=self.api.get_workspace_by_name(args.workspace)
+            db = DBData.from_dict(w.data["SummaryData"]["DBData"])
+            query=self.api.get_findings_for_workspace(db)
+        
+        query.execute()
+        while(query.move_next()):
+            print(query.data_json(True))
+
+class JobCommands(CommandArgProcessor):
+                
+    def build(self,sub_parsers):
+        #add list processor
+        jobs_parser=sub_parsers.add_parser('job',help="Jobs operations")
+        jobs_subparser=jobs_parser.add_subparsers(help='command help',title="Job Commands")
+        #list command
+        list_parser=jobs_subparser.add_parser('list')
+        list_parser.set_defaults(func=self.list_jobs)
+        list_parser.add_argument('--workspace')
+        super()._add_api_args(list_parser)
+        #start command
+        start_parser=jobs_subparser.add_parser('start')
+        start_parser.set_defaults(func=self.start_job)
+        start_parser.add_argument("jobName",help="Name of new job")
+        start_parser.add_argument("workspaceName",help="Workspace store job")
+        start_parser.add_argument("templateName",help="Workspace template to start the job with")
+        super()._add_api_args(start_parser)
+
+        #summary command
+        summary_parser=jobs_subparser.add_parser('summary')
+        summary_parser.set_defaults(func=self.job_summary)
+        summary_parser.add_argument("id",help="The unique identifier for the job")
+        super()._add_api_args(summary_parser)
+
+
+    def list_jobs(self,args)   :
+        self._init_api(args)
+        if(args.workspace):
+            w=self.api.get_workspace_by_name(args.workspace)
+            result = self.api.get_jobs_for_workspace(w.data["ID"])
+            result.execute(100)
+            print ("found {0} jobs".format(result.totalCount))
+            while(result.move_next()):
+                print(result.data_json(True))
+        else:
+            result = self.api.get_jobs()
+            result.execute(100)
+            print ("found {0} jobs".format(result.totalCount))
+            while(result.move_next()):
+                print(result.data_json(True))
+
+    def start_job(self,args):
+        self._init_api(args)
+        result=self.api.start_job_fromtemplate(args.jobName,args.workspaceName,args.templateName)
+        print(result.data_json(True))
+    
+    def job_summary(self,args):
+        self._init_api(args)
+        result=self.api.get_job_summary(args.id)
+        print(result.data_json(True))
+
+class WorkspaceCommand(CommandArgProcessor):
+    def build(self,parent_parser):
+        #add list processor
+        workspace_parser=parent_parser.add_parser('workspace',help="Workspace operations")
+        workspace_subparser=workspace_parser.add_subparsers(help='command help',title="Workspace Commands")
+        #list command
+        list_parser=workspace_subparser.add_parser('list')
+        list_parser.set_defaults(func=self.list)
+        list_parser.add_argument('--name',help="Name of workspace to list")
+        super()._add_api_args(list_parser)
+    
+    def list(self,args):
+        self._init_api(args)
+        if(args.name):
+            workspaces=self.api.get_workspace_by_name(args.name)
+            print(workspaces.data_json(True))
+        else:
+            workspaces=self.api.get_workspaces()
+            print(workspaces.data_json(True))
+
 
 class Commands(object):
     def __init__(self):
         parser = argparse.ArgumentParser(prog="examples")
         
         self.sub_parsers=parser.add_subparsers(help='Command help',title="Commands",description="Valid Commands",required=True,dest="command")
-        self._build_jobs_parser()
-        self._build_workspace_parser()
-        self._build_template_parser()
+
+        self.job_commands=JobCommands()
+        self.job_commands.build(self.sub_parsers)
+
+        self.findings_command=FindingsCommands()
+        self.findings_command.build(self.sub_parsers)
+
+        self.template_command=TemplateCommand()
+        self.template_command.build(self.sub_parsers)
+
+        self.workspace_command=WorkspaceCommand()
+        self.workspace_command.build(self.sub_parsers)
+
         args=parser.parse_args()
         args.func(args)
-
     
-    def _build_jobs_parser(self):
-        subparser=self.sub_parsers.add_parser('job',help="Operations on jobs")
-        subparser.set_defaults(func=self.jobs)
-        group=subparser.add_mutually_exclusive_group(required=True)
-        group.add_argument('--list', action='store_true',help="List all jobs")
-        group.add_argument('--workspace', action='store',help="Get job by workspace name")
-        self._add_global_args(subparser)        
-    
-    def _build_workspace_parser(self):
-        subparser=self.sub_parsers.add_parser('workspace',help="Operations on workspaces")
-        subparser.set_defaults(func=self._workspace)
-        group=subparser.add_mutually_exclusive_group(required=True)
-        group.add_argument('--list', action='store_true',help="List all workspaces")
-        # name needs a value
-        group.add_argument('--name', action='store',help="Find workspace by name")
-        self._add_global_args(subparser)        
-        
-    def _build_template_parser(self):
-        sub_parser=self.sub_parsers.add_parser('template',help="Operations on templates")
-        sub_parser.set_defaults(func=self._template_command)
-        group=sub_parser.add_mutually_exclusive_group(required=True)
-        group.add_argument('--list',action="store_true")
-        group.add_argument('--name',action="store_true")
-        sub_parser.add_argument('--workspace',action='store')
-        self._add_global_args(sub_parser)        
-    def _add_global_args(self,parser):
-        #These are all required options, but I found it weird that the arg parser requires them to appear
-        #in front of the "command", vs after. This works around that issue.
-        parser.add_argument('token_endpoint', type=str, help='Idp Token Endpoint')
-        parser.add_argument('api_endpoint', type=str, help='Venari API Endpoint')
-        parser.add_argument('--ignore_ssl',action='store_true',help="Don't verify ssl certificates")
+ 
+       
+  
 
-
-    def _init_api(self,args):
-        self.auth = VenariAuth(args.token_endpoint)
-        self.auth.login_password('admin', 'password')        
-        self.api=VenariApi(self.auth,args.api_endpoint,verify_ssl=not args.ignore_ssl)
-
-
-    def jobs(self,args):
-        self._init_api(args)
-
-        if(args.list):
-            self.jobs_list()
-        elif(args.workspace):
-            workspaces=self.api.get_workspace_by_name(args.workspace)
-            print(workspaces.data_json(True))
-
-        
-    def jobs_list(self):
-        jobs = self.api.get_jobs()
-        print(jobs.data_json(True))
-        
-
-    def _workspace(self,args):
-        self._init_api(args)
-        if(args.list):
-            self.workspace_list()
-        elif (args.name):
-            self._workspace_name(args.name)
-
-
-    def _workspace_list(self):
-        workspaces=self.api.get_workspaces()
-        print(workspaces.data_json(True))
-
-    def _workspace_name(self,name):
-        workspaces=self.api.get_workspace_by_name(name)
-        print(workspaces.data_json(True))
-    
-    
-    def _template_command(self,args):
-        self._init_api(args)
-        cmd=TemplateCommand(self.api)
-        cmd.process(args)
-
-
+  
+  
 
 if __name__ == '__main__':
     
