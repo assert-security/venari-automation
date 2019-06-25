@@ -73,9 +73,16 @@ class FindingsCommands(CommandArgProcessor):
             db = DBData.from_dict(w.data["SummaryData"]["DBData"])
             query=self.api.get_findings_for_workspace(db)
         
-        query.execute()
-        while(query.move_next()):
-            print(query.data_json(True))
+        # query.execute()
+        # while(query.move_next()):
+        #     print(query.data_json(True))
+
+        resp=query.executeRaw()
+        findings:List[Finding]=Finding.fromResults(resp.data)
+        print(f"{'Name':<25} {'Severity':10} {'Location':<40} {'P. Location':15} {'P. Name':15} {'Url':30}")
+        
+        for f in findings:
+            print(f"{f.name:25} {str(f.severity):10} {f.location:<40.40} {f.parameter.location:15} {f.parameter.name:15} {f.parameter.url:30}")
 
 class JobCommands(CommandArgProcessor):
                 

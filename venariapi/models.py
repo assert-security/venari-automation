@@ -3,6 +3,7 @@ import datetime
 from  dateutil.parser import parse
 from enum import IntEnum
 
+
 class JobStatus(IntEnum):
     Ready=0
     Acquired=1
@@ -85,3 +86,70 @@ class Job(object):
             jobs.append(j)
 
         return jobs
+
+class FindingSeverity(IntEnum):
+    Critical=0
+    High=1
+    Medium=2
+    Low=3
+    Info=4
+    
+    def __str__(self):
+        return '%s' % self.name
+
+
+class FindingParameter(object):
+    location:str
+    name:str
+    value:str
+    url:str=None
+
+    @classmethod
+    def fromData(cls,data:dict):
+        f=cls()
+        f.location=data["parameterlocation"]
+        f.name=data["parametername"]
+        f.value=data["parametervalue"]
+        if "url" in data:
+            f.url=data["url"]
+        else:
+            f.url=""
+        return f
+    
+
+class Finding(object):
+    def __init__(
+        self,
+        id:int,
+        name:str,
+        location:str,
+        severity:FindingSeverity,
+        parameter:FindingParameter
+    ):
+        self.id=id
+        self.name=name
+        self.location=location
+        self.severity=severity
+        self.parameter=parameter
+
+    @classmethod
+    def fromData(cls,data:dict):
+        summary=data["SummaryData"]
+        props=summary["Properties"]
+        return cls(
+            data["ID"],
+            summary["Name"],
+            props["location"],
+            FindingSeverity(summary["Severity"]),
+            FindingParameter.fromData(props)
+        )
+
+    @classmethod
+    def fromResults(cls,data:dict):
+        findings=[]
+        for i in data["Items"]:
+            f=Finding.fromData(i)
+            findings.append(f)
+        return findings
+
+
