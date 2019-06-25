@@ -1,6 +1,19 @@
 import typing
 import datetime
 from  dateutil.parser import parse
+from enum import IntEnum
+
+class JobStatus(IntEnum):
+    Ready=0
+    Acquired=1
+    Running=2
+    Paused=3
+    Completed=4
+    Resume=5
+
+    def __str__(self):
+        return '%s' % self.name
+
 
 class Workspace(object):
     def __init__(self,name:str,id:int,uniqueId:str):
@@ -24,7 +37,7 @@ class Job(object):
     def __init__(self,
         name:str,
         id:int,
-        status,
+        status:JobStatus,
         activity:[],
         assignedNode:str,
         workspace:Workspace):
@@ -38,8 +51,6 @@ class Job(object):
         if(len(activity) > 0):
             a=activity[0]
         if a:
-            print(a)
-            print(a["StartTime"])
             self.startTime=parse(a["StartTime"])
             self.endTime=parse(a["EndTime"])
             
@@ -65,7 +76,7 @@ class Job(object):
             j:Job=cls(
                 i["Name"],
                 i["ID"],
-                i["Status"],
+                JobStatus(i["Status"]),
                 i["Activity"],
                 i["AssignedTo"],
                 workspaces[i["WorkspaceID"]]

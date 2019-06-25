@@ -123,7 +123,7 @@ class JobCommands(CommandArgProcessor):
             # print(resp.data)
             jobs=Job.fromResults(resp.data)
             for j in jobs:
-                print(f"Name: {j.name},Id: {j.id},Status: {j.status},Workspace: {j.workspace.name},duration: {j.duration},start:{j.startTime},end:{j.endTime}")
+                print(f"Name: {j.name},Id: {j.id},Status: {str(j.status)},Workspace: {j.workspace.name},duration: {j.duration},start:{j.startTime},end:{j.endTime}")
 
     def start_job(self,args):
         self._init_api(args)
