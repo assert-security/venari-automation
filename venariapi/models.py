@@ -23,11 +23,11 @@ class Workspace(object):
 
 
     @classmethod 
-    def FromJson(cls,workspace:dict):
+    def fromData(cls,data:dict):
         return cls(
-            dict["SummaryData"]["DisplayName"],
-            dict["ID"],
-            dict["UniqueID"])
+            data["SummaryData"]["DisplayName"],
+            data["ID"],
+            data["UniqueID"])
             
 class Job(object):
     startTime:datetime
@@ -60,27 +60,28 @@ class Job(object):
                 self.duration=0
 
     @classmethod
+    def fromData(cls,data:dict,workspace:Workspace):
+        return cls(
+                data["Name"],
+                data["ID"],
+                JobStatus(data["Status"]),
+                data["Activity"],
+                data["AssignedTo"],
+                workspace
+        )
+        
+    
+    @classmethod
     def fromResults(cls,results:dict):
         
         workspaces:dict={}
         for i in results["Workspaces"]:
-            w=Workspace(
-                i["SummaryData"]["DisplayName"],
-                i["ID"],
-                i["UniqueID"]
-            )
+            w=Workspace.fromData(i)
             workspaces[w.id]=w
 
         jobs=[]
         for i in results["Items"]:
-            j:Job=cls(
-                i["Name"],
-                i["ID"],
-                JobStatus(i["Status"]),
-                i["Activity"],
-                i["AssignedTo"],
-                workspaces[i["WorkspaceID"]]
-            )
+            j=Job.fromData(i,workspaces[i["WorkspaceID"]])
             jobs.append(j)
 
         return jobs
