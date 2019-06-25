@@ -23,7 +23,12 @@ class VenariQueryResult(object):
         self.curPageCount=self.response.data["Count"]
         self.curIndex=-1
         self.properties["QueryID"]=self.response.data["QueryID"]
-        
+    
+    def executeRaw(self,numPerPage=100):
+        self.properties["Take"]=numPerPage
+        self.properties["Skip"]=0
+        return self.requestor.request(json=self.properties)
+
     def move_next(self)->bool:
         print("curIndex: {0} page count: {1} total count: {2}".format(self.curIndex,self.curPageCount,self._totalCount))
         if(self.response):

@@ -2,7 +2,7 @@ from venari import *
 import json
 import sys
 import abc
-
+from models import *
 
 class CommandArgProcessor(object):
     def _init_api(self,args):
@@ -114,10 +114,16 @@ class JobCommands(CommandArgProcessor):
                 print(result.data_json(True))
         else:
             result = self.api.get_jobs()
-            result.execute(100)
-            print ("found {0} jobs".format(result.totalCount))
-            while(result.move_next()):
-                print(result.data_json(True))
+            # result.execute(100)
+            # print ("found {0} jobs".format(result.totalCount))
+            # while(result.move_next()):
+            #     print(result.data_json(True))
+
+            resp=result.executeRaw()
+            # print(resp.data)
+            jobs=Job.fromResults(resp.data)
+            for j in jobs:
+                print(f"Name: {j.name},Id: {j.id},Status: {j.status},Workspace: {j.workspace.name},duration: {j.duration},start:{j.startTime},end:{j.endTime}")
 
     def start_job(self,args):
         self._init_api(args)
