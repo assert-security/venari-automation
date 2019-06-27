@@ -128,9 +128,10 @@ class JobCommands(CommandArgProcessor):
 
             resp=result.executeRaw()
             # print(resp.data)
-            jobs=Job.fromResults(resp.data)
+            jobs:List[Job]=Job.fromResults(resp.data)
+            print(f"{'Name':35} {'Id':2} {'Status':10} {'Wks Name':12} {'Duration':14} {'Db Id':36} {'Db Type':2}")
             for j in jobs:
-                print(f"Name: {j.name},Id: {j.id},Status: {str(j.status)},Workspace: {j.workspace.name},duration: {j.duration},start:{j.startTime},end:{j.endTime}")
+                print(f"{j.name:<35} {j.id:2} {str(j.status):<10} {j.workspace.name:<12} {str(j.duration):<14} {j.DbData.id:36} {j.DbData.type:<2}")
 
     def start_job(self,args):
         self._init_api(args)
@@ -155,13 +156,17 @@ class WorkspaceCommand(CommandArgProcessor):
     
     def list(self,args):
         self._init_api(args)
+        workspaces=[]
         if(args.name):
-            workspaces=self.api.get_workspace_by_name(args.name)
-            print(workspaces.data_json(True))
+            results=self.api.get_workspace_by_name(args.name).data
+            workspaces.append(Workspace.fromData(results))
         else:
-            workspaces=self.api.get_workspaces()
-            print(workspaces.data_json(True))
-
+            results=self.api.get_workspaces().data
+            workspaces=Workspace.fromResults(results)
+        
+        print(f"{'Name':10} {'Id':3} {'Db Id':36} {'Db Type':2}")
+        for w in workspaces:
+            print(f"{w.name:<10} {w.id:<3} {w.DbData.id:<36} {w.DbData.type:<2}")
 
 class Commands(object):
     def __init__(self):

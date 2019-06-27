@@ -54,22 +54,6 @@ class Finding(object):
 
 '''    
   
-class DBTypeEnum(IntEnum):
-    Global=0
-    Job=1
-    Workspace=2
-
-class DBData(object):
-    def __init__ (self,id,type:DBTypeEnum):
-        self.DBID=id
-        self.DBType=type
-
-    @staticmethod 
-    def from_dict(json:dict):
-        data=DBData(json["DBID"],json["DBType"])
-        return data
-
-
 class VenariApi(object):
     def __init__(self, auth, api_url, verify_ssl=True, timeout=60, user_agent=None,
                  token=None, client_version='1.0'):
@@ -107,7 +91,7 @@ class VenariApi(object):
         })
 
         endpoint = '/api/jobs'
-        r=VenariRequestor(self.auth,self.api+endpoint,'POST',verify_ssl=self.verify_ssl)
+        r=VenariRequestor(self.auth,self.api_url+endpoint,'POST',verify_ssl=self.verify_ssl)
         return VenariQueryResult(r,json_data)
 
     def get_jobs(self)->VenariQueryResult:

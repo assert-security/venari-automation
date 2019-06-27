@@ -3,6 +3,21 @@ import datetime
 from  dateutil.parser import parse
 from enum import IntEnum
 
+class DBTypeEnum(IntEnum):
+    Global=0
+    Job=1
+    Workspace=2
+
+class DBData(object):
+    def __init__ (self,id,type:DBTypeEnum):
+        self.id=id
+        self.type=type
+
+    @staticmethod 
+    def from_dict(json:dict):
+        data=DBData(json["DBID"],json["DBType"])
+        return data
+
 
 class JobStatus(IntEnum):
     Ready=0
@@ -21,7 +36,7 @@ class Workspace(object):
         self.name=name
         self.id:int=id
         self.uniqueId=uniqueId
-
+        self._dbData:DBData=None
 
     @classmethod 
     def fromData(cls,data:dict):
@@ -29,15 +44,26 @@ class Workspace(object):
             data["SummaryData"]["DisplayName"],
             data["ID"],
             data["UniqueID"])
+
+    @property
+    def DbData(self)->DBData:
+        if self._dbData==None:
+            self._dbData=DBData(self.uniqueId,DBTypeEnum.Workspace)
+        return self._dbData
+
+    @classmethod
+    def fromResults(cls,results):
+        workspaces=[]
+        for i in results:
+            workspaces.append(Workspace.fromData(i))
+        return workspaces
+
             
 class Job(object):
-    startTime:datetime
-    endTime:datetime
-    duration:datetime.timedelta
-
     def __init__(self,
         name:str,
         id:int,
+        uniqueId:str,
         status:JobStatus,
         activity:[],
         assignedNode:str,
@@ -48,6 +74,8 @@ class Job(object):
         self.id=id
         self.assignedNode=assignedNode
         self.workspace=workspace
+        self._dbData:DBData=None
+        self.uniqueId=uniqueId
 
         if(len(activity) > 0):
             a=activity[0]
@@ -65,6 +93,7 @@ class Job(object):
         return cls(
                 data["Name"],
                 data["ID"],
+                data["UniqueID"],
                 JobStatus(data["Status"]),
                 data["Activity"],
                 data["AssignedTo"],
@@ -84,8 +113,13 @@ class Job(object):
         for i in results["Items"]:
             j=Job.fromData(i,workspaces[i["WorkspaceID"]])
             jobs.append(j)
-
         return jobs
+
+    @property
+    def DbData(self)->DBData:
+        if self._dbData==None:
+            self._dbData=DBData(self.uniqueId,DBTypeEnum.Job)
+        return self._dbData
 
 class FindingSeverity(IntEnum):
     Critical=0

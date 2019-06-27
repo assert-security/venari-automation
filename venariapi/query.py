@@ -1,4 +1,5 @@
 from venari_requestor import *
+from models import *
 
 class VenariQueryResult(object):
     requestor:VenariRequestor=None
