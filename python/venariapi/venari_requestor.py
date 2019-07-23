@@ -12,5 +12,5 @@ class VenariRequestor(object):
 
     def request(self,json=None,params=None)->VenariResponse:
         #add check for auth token expiration and logic to get a new one here.
-        return RequestHelper.request(method=self.method,authToken=self.auth.access_token,endpoint=self.endpoint,json=json,params=params,verify_ssl=self.verify_ssl)
+        return RequestHelper.request(method=self.method,authToken=self.auth.access_token,endpoint=self.endpoint,json=json,params=params)
 

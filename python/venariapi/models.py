@@ -81,8 +81,11 @@ class Job(object):
             a=activity[0]
         if a:
             self.startTime=parse(a["StartTime"])
-            self.endTime=parse(a["EndTime"])
-            
+            if(a["EndTime"]):
+                self.endTime=parse(a["EndTime"])
+            else:
+                self.endTime=datetime.datetime.min
+
             if self.endTime.toordinal() != datetime.datetime.min.toordinal():
                 self.duration=self.endTime-self.startTime
             else:
@@ -120,6 +123,45 @@ class Job(object):
         if self._dbData==None:
             self._dbData=DBData(self.uniqueId,DBTypeEnum.Job)
         return self._dbData
+
+class FindingCount(object):
+    def __init__(self,Count:int,Name:str,Severity:str):
+        self.count=Count
+        self.name=Name
+        self.severity=Severity
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(**data)
+
+class JobSummary(object):
+    def __init__(
+        self,
+        assignedNode:str,
+        id:int,
+        name:str,
+        counts,
+        raw:dict
+    ):
+        self.assinged_node=assignedNode
+        self.finding_counts=counts
+
+    @classmethod
+    def from_results(cls,results:dict):
+        counts:FindingCount=[]
+        stats=results["Statistics"]
+        if(stats and stats["FindingCounts"]):
+            for c in results["Statistics"]["FindingCounts"]:
+                counts.append(FindingCount.from_dict(c))
+
+        return cls(
+            results['AssignedTo'],
+            stats['ID'],
+            "",
+            counts,
+            results
+        )
+
 
 class FindingSeverity(IntEnum):
     Critical=0

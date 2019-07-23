@@ -1,0 +1,25 @@
+{
+    "WorkspaceName": "Zero",
+    "JobTemplateName": "Authenticated Exploit",
+    "SettingsType": "ExploiterJobSettingsDbObject",
+    "SettingsTypeDisplayName": "Exploiter",
+    "Patch": [
+        {
+            "value": "username",
+            "path": "/WorkflowSettings/AutoLoginUserName",
+            "op": "replace"
+        },
+        {
+            "value": "password",
+            "path": "/WorkflowSettings/AutoLoginPassword",
+            "op": "replace"
+        },
+        {
+            "value": [
+                "http://zero.webappsecurity.com/"
+            ],
+            "path": "/ResourceScope/SeedResources/StartUrls",
+            "op": "replace"
+        }
+    ]
+}

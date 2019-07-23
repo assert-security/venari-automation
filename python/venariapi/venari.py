@@ -71,7 +71,22 @@ class VenariApi(object):
         if not self.verify_ssl:
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-        # Set auth_type based on what's been provided
+    @staticmethod
+    def getIdpInfo(api_url:str)->IdpInfo:
+        url:str=api_url+'/api/auth/idpInfo'
+        response=RequestHelper.request('GET',url)
+        if(not response.success):
+            print(response.message)
+        return IdpInfo(response.data)
+
+    @staticmethod
+    def getTokenEndpoint(authorityUrl:str):
+        """
+        Retrieve the token endpoint from the oidc document.
+        """
+        url:str=authorityUrl+"/.well-known/openid-configuration"
+        response=RequestHelper.request('GET',url)
+        return response.data["token_endpoint"]
     
     def get_workspace_by_name(self,workspaceName)->VenariResponse:
         endpoint='/api/workspace'

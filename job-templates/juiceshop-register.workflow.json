@@ -1,0 +1,95 @@
+Header:
+  Name: Register
+  ApplicationName: Juiceshop
+  RequiresLogin: False
+Actions:
+- Navigate:
+    Url: '{endpoint}/#/'
+- WaitForContent: {}
+- Snapshot: {}
+- Click:
+    Nearest: Any
+    Patterns:
+    - Close
+    ActionIndex: 0
+- WaitForContent:
+    ActionIndex: 0
+- Snapshot:
+    ActionIndex: 0
+- Click:
+    Nearest: Any
+    Patterns:
+    - Login
+    ActionIndex: 1
+- WaitForContent:
+    ActionIndex: 1
+- Snapshot:
+    ActionIndex: 1
+- Click:
+    Nearest: Any
+    Patterns:
+    - Not yet a customer?
+    ActionIndex: 2
+- WaitForContent:
+    ActionIndex: 2
+- Snapshot:
+    ActionIndex: 2
+- FindTextInputs:
+    Take: 1
+    Nearest: Left
+    Patterns:
+    - Email
+    ActionIndex: 2
+- SendText:
+    Text: '{Email}'
+    Overwrite: true
+    ActionIndex: 2
+- FindPasswords:
+    Take: 1
+    Nearest: Left
+    Patterns:
+    - Password
+    ActionIndex: 2
+- SendText:
+    Text: '{Password}'
+    Overwrite: true
+    ActionIndex: 2
+- FindPasswords:
+    Take: 1
+    Nearest: Left
+    Patterns:
+    - Repeat Password
+    ActionIndex: 2
+- SendText:
+    Text: '{Repeat Password}'
+    Overwrite: true
+    ActionIndex: 2
+- FindSelects:
+    Take: 1
+    Skip: 1
+    Nearest: Left
+    Patterns:
+    - This cannot be changed later!
+    ActionIndex: 2
+- SelectOptionIndex:
+    Index: '{This cannot be changed later!_2}'
+    ActionIndex: 2
+- FindTextInputs:
+    Take: 1
+    Nearest: Any
+    Patterns:
+    - Answer to your security question
+    ActionIndex: 2
+- SendText:
+    Text: '{Answer to your security question}'
+    Overwrite: true
+    ActionIndex: 2
+- Click:
+    Nearest: Any
+    Patterns:
+    - Register
+    ActionIndex: 3
+- WaitForContent:
+    ActionIndex: 3
+- Snapshot:
+    ActionIndex: 3

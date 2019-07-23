@@ -2,8 +2,11 @@ import json
 import requests
 
 class RequestHelper(object):
+    verify_ssl:bool = False #class property to enable ssl cert enforcement for all venari api calls.
+    
+    
     @staticmethod
-    def request(method, endpoint, params=None, authToken=None, files=None, json=None, data=None, headers=None, stream=False,verify_ssl=True):
+    def request(method, endpoint, params=None, authToken=None, files=None, json=None, data=None, headers=None, stream=False):
         """
         Common handler for all HTTP requests, params are for GET and data for POST
         :param params, files, json, data, headers, stream, method, endpoint
@@ -20,7 +23,7 @@ class RequestHelper(object):
         try:
             response = requests.request(method=method, url=endpoint, params=params, files=files,
                                         headers=headers, json=json, data=data,
-                                        verify=verify_ssl, stream=stream)
+                                        verify=RequestHelper.verify_ssl, stream=stream)
 
             try:
                 response.raise_for_status()
@@ -42,6 +45,11 @@ class RequestHelper(object):
                 if response.status_code == 401:
                     return VenariResponse(
                         message='There was an error handling your request. {} {}'.format(response.content, e),
+                        success=False)
+                else:
+                    return VenariResponse(
+                        message=repr(e),
+                        response_code=response.status_code,
                         success=False)
         except requests.exceptions.SSLError as e:
             return VenariResponse(message='An SSL error occurred. {0}'.format(e), success=False)
