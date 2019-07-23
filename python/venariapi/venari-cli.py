@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import click
 import  getpass
+import sys
 from pathlib import Path
 from venari import *
 
@@ -20,11 +21,13 @@ class OAuthLoginInfo:
 @click.option('--verify_ssl/--no_verify_ssl',default=True)
 
 def cli(ctx,url,verify_ssl):
-     ctx.obj=CommonParams()
-     ctx.obj.url=url
-     RequestHelper.verify_ssl=verify_ssl
-     auth=loadCredentials(url)
-     ctx.obj.api=VenariApi(auth,url)
+     #Don't do an init if user is just asking for help.
+     if(not "--help" in sys.argv):
+          ctx.obj=CommonParams()
+          ctx.obj.url=url
+          RequestHelper.verify_ssl=verify_ssl
+          auth=loadCredentials(url)
+          ctx.obj.api=VenariApi(auth,url)
 
 @cli.command()
 @click.option('--client_id',nargs=1,required=True)
