@@ -32,32 +32,25 @@ class JobStatus(IntEnum):
 
 
 class Workspace(object):
-    def __init__(self,name:str,id:int,uniqueId:str):
+    def __init__(self,name:str,id:int,uniqueId:str,db_data:DBData):
         self.name=name
         self.id:int=id
         self.uniqueId=uniqueId
-        self._dbData:DBData=None
+        self._db_data:DBData=db_data
 
     @classmethod 
-    def fromData(cls,data:dict):
+    def from_data(cls,data:dict):
+        summary_data=data["SummaryData"]
         return cls(
-            data["SummaryData"]["DisplayName"],
+            summary_data["DisplayName"],
             data["ID"],
-            data["UniqueID"])
+            data["UniqueID"],
+            DBData(summary_data["DBData"]["DBID"],DBTypeEnum.Workspace))
 
     @property
-    def DbData(self)->DBData:
-        if self._dbData==None:
-            self._dbData=DBData(self.uniqueId,DBTypeEnum.Workspace)
-        return self._dbData
-
-    @classmethod
-    def fromResults(cls,results):
-        workspaces=[]
-        for i in results:
-            workspaces.append(Workspace.fromData(i))
-        return workspaces
-
+    def db_data(self)->DBData:
+        return self._db_data
+  
             
 class Job(object):
     def __init__(self,
@@ -76,8 +69,9 @@ class Job(object):
         self.workspace=workspace
         self._dbData:DBData=None
         self.uniqueId=uniqueId
-
-        if(len(activity) > 0):
+        a=None
+        self.duration=0
+        if(activity and len(activity) > 0):
             a=activity[0]
         if a:
             self.startTime=parse(a["StartTime"])
@@ -92,7 +86,7 @@ class Job(object):
                 self.duration=0
 
     @classmethod
-    def fromData(cls,data:dict,workspace:Workspace):
+    def from_data(cls,data:dict,workspace:Workspace=None):
         return cls(
                 data["Name"],
                 data["ID"],
@@ -102,21 +96,6 @@ class Job(object):
                 data["AssignedTo"],
                 workspace
         )
-        
-    
-    @classmethod
-    def fromResults(cls,results:dict):
-        
-        workspaces:dict={}
-        for i in results["Workspaces"]:
-            w=Workspace.fromData(i)
-            workspaces[w.id]=w
-
-        jobs=[]
-        for i in results["Items"]:
-            j=Job.fromData(i,workspaces[i["WorkspaceID"]])
-            jobs.append(j)
-        return jobs
 
     @property
     def DbData(self)->DBData:
@@ -209,7 +188,7 @@ class Finding(object):
         self.parameter=parameter
 
     @classmethod
-    def fromData(cls,data:dict):
+    def from_data(cls,data:dict):
         summary=data["SummaryData"]
         props=summary["Properties"]
         return cls(
@@ -220,12 +199,57 @@ class Finding(object):
             FindingParameter.fromData(props)
         )
 
+class JobTemplate(object):
+    def __init__(
+        self,
+        created_time,
+        id:int,
+        name:str,
+        settings_id:int,
+        settings_type:int,
+        settings_type_display_name:str,
+        unique_id:str,
+        version:int
+    ):
+        self.created_time=created_time
+        self.id=id
+        self.name=name
+        self.settings_id=settings_id
+        self.settings_type=settings_type
+        self.settings_type_display_name=settings_type_display_name
+        self.unique_id=unique_id
+        self.version=version
+
+
     @classmethod
-    def fromResults(cls,data:dict):
-        findings=[]
-        for i in data["Items"]:
-            f=Finding.fromData(i)
-            findings.append(f)
-        return findings
+    def from_data(cls,data:dict):
+        created_time=parse(data["CreatedAt"])
+        return cls(
+            created_time,
+            data["ID"],
+            data["Name"],
+            data["SettingsID"],
+            data["SettingsType"],
+            data["SettingsTypeDisplayName"],
+            data["UniqueID"],
+            data["Version"]
+        )
 
-
+class JobStartResponse(object):
+    def __init__(
+        self,
+        job:Job,
+        error:str,
+        success:bool
+    ):
+        self.job=job
+        self.error=error
+        self.success=success
+    @classmethod
+    def from_data(cls,data:dict):
+        success:bool=data["Succeeded"]
+        if(success):
+            job=Job.from_data(data["Job"])
+            return cls(job,None,True)
+        else:
+            return cls(None,data["Message"],False)

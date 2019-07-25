@@ -4,7 +4,17 @@ import requests
 class RequestHelper(object):
     verify_ssl:bool = False #class property to enable ssl cert enforcement for all venari api calls.
     
-    
+    @staticmethod 
+    def __get_json(response)->str:
+        if response.text:
+            try:
+                data = response.json()
+            except ValueError:
+                data = response.content
+        else:
+            data = ''
+        return data
+
     @staticmethod
     def request(method, endpoint, params=None, authToken=None, files=None, json=None, data=None, headers=None, stream=False):
         """
@@ -18,43 +28,44 @@ class RequestHelper(object):
             headers = {'Accept': 'application/json'}
 
         if authToken:
-            headers = {'Authorization': 'Bearer ' + authToken}
+            headers.update({'Authorization': 'Bearer ' + authToken})
 
         try:
             response = requests.request(method=method, url=endpoint, params=params, files=files,
                                         headers=headers, json=json, data=data,
                                         verify=RequestHelper.verify_ssl, stream=stream)
-
             try:
                 response.raise_for_status()
                 response_code = response.status_code
                 success = True if response_code // 100 == 2 else False
-                if response.text:
-                    try:
-                        data = response.json()
-                    except ValueError:
-                        data = response.content
-                else:
-                    data = ''
+                data=RequestHelper.__get_json(response)
+                
                 return VenariResponse(
                     success=success, response_code=response_code, data=data)
 
             except ValueError as e:
                 return VenariResponse(success=False, message="JSON response could not be decoded {0}.".format(e))
+            
             except requests.exceptions.HTTPError as e:
                 if response.status_code == 401:
                     return VenariResponse(
                         message='There was an error handling your request. {} {}'.format(response.content, e),
                         success=False)
                 else:
+                    data=RequestHelper.__get_json(response)
+                    message=repr(e)
+                    if(data and type(data) is dict and data["error"]):
+                        message=f"Api call failed: {data['error']}"
                     return VenariResponse(
-                        message=repr(e),
+                        message=message,
                         response_code=response.status_code,
                         success=False)
         except requests.exceptions.SSLError as e:
             return VenariResponse(message='An SSL error occurred. {0}'.format(e), success=False)
+        
         except requests.exceptions.ConnectionError as e:
             return VenariResponse(message='A connection error occurred. {0}'.format(e), success=False)
+        
         except requests.exceptions.Timeout:
             return VenariResponse(message='The request timed out after ' + str(self.timeout) + ' seconds.',
                                     success=False)
@@ -83,3 +94,6 @@ class VenariResponse(object):
             return json.dumps(self.data, sort_keys=True, indent=4, separators=(',', ': '))
         else:
             return json.dumps(self.data)
+
+    def hasData(self):
+        return self.response_code==200 and self.data != ""

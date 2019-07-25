@@ -16,44 +16,12 @@ from venari_requestor import *
 from venari_auth import *
 from venariapi import __version__ as version
 import argparse
-from query import *
 from enum import IntEnum
-'''
-class SummaryData(object):
-    def __init__(self,Name,RuleUniqueID:str,Severity,State,RuleType,Behaviors,DefaultSort,Properties):
-        #self.Behaviors=BehaviorSettingsData
-        self.Name=Name
+from venari_query import VenariQuery
+from venari_query import JobQuery
+from venari_query import FindingQuery
+from models import *
 
-    @classmethod
-    def from_json(cls, json_data: dict):
-        return cls(**json_data)
-
-class BehaviorSettingsData(object):
-    def __init__(self,DisplayText,UniqueName,Enabled):
-        self.DisplayText:DisplayText
-        self.UniqueName:UniqueName
-        self.Enabled:Enabled
-    
-    @classmethod
-    def from_json(cls, json_data: dict):
-        return cls(**json_data)
-
-class Finding(object):
-
-    def __init__(self, DetailID: str,ID: str,UniqueID:str,Version:str,SummaryData):
-        self.DetailID=DetailID
-        self.ID=ID
-        self.UniqueID=UniqueID
-        self.Version=Version
-        self.SummaryData=SummaryData
-    @classmethod
-    def from_json(cls, json_data: dict):
-        json_data["SummaryData"]=SummaryData.from_json(json_data["SummaryData"])
-        f= cls(**json_data)
-        return f
-
-'''    
-  
 class VenariApi(object):
     def __init__(self, auth, api_url, verify_ssl=True, timeout=60, user_agent=None,
                  token=None, client_version='1.0'):
@@ -72,53 +40,57 @@ class VenariApi(object):
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     @staticmethod
-    def getIdpInfo(api_url:str)->IdpInfo:
+    def get_idp_info(api_url:str)->IdpInfo:
         url:str=api_url+'/api/auth/idpInfo'
         response=RequestHelper.request('GET',url)
-        if(not response.success):
-            print(response.message)
         return IdpInfo(response.data)
 
     @staticmethod
-    def getTokenEndpoint(authorityUrl:str):
+    def get_token_endpoint(authorityUrl:str):
         """
         Retrieve the token endpoint from the oidc document.
         """
-        url:str=authorityUrl+"/.well-known/openid-configuration"
+        if(not authorityUrl.endswith("/")):
+            authorityUrl=authorityUrl+"/"
+        url:str=authorityUrl+".well-known/openid-configuration"
         response=RequestHelper.request('GET',url)
         return response.data["token_endpoint"]
     
-    def get_workspace_by_name(self,workspaceName)->VenariResponse:
+    def get_workspace_by_name(self,workspaceName)->Workspace:
         endpoint='/api/workspace'
         data=dict({
             "Name":workspaceName
         })
-        return self._request('POST',endpoint,json=data)
+        result=self._request('POST',endpoint,json=data)
+        if(result.hasData()):
+           return Workspace.from_data(result.data)
 
     def get_workspaces(self):
         endpoint='/api/workspace/summaries'
-        return self._request('GET',endpoint)
+        result=self._request('GET',endpoint)
+        if(result.hasData()):
+            return [Workspace.from_data(i) for i in result.data]
 
 
-    def get_jobs_for_workspace(self,Id)->VenariQueryResult:
+    def get_jobs_for_workspace(self,Id)->JobQuery:
         json_data = dict({
             "WorkspaceID": Id,
         })
 
         endpoint = '/api/jobs'
         r=VenariRequestor(self.auth,self.api_url+endpoint,'POST',verify_ssl=self.verify_ssl)
-        return VenariQueryResult(r,json_data)
+        return JobQuery(r,json_data)
 
-    def get_jobs(self)->VenariQueryResult:
+    def get_jobs(self)->JobQuery:
         json_data=dict({
             "SortDescending": True,
         })
 
         endpoint=self.api_url+'/api/jobs'
         r=VenariRequestor(self.auth,endpoint,'POST',verify_ssl=self.verify_ssl)
-        return VenariQueryResult(r,json_data)
+        return JobQuery(r,json_data)
 
-    def get_findings_for_workspace(self,dbdata:DBData)->VenariQueryResult:
+    def get_findings_for_workspace(self,dbdata:DBData)->VenariQuery:
         """
         Return all workspace/app/scan historical finding detail summary.
         :param:
@@ -134,13 +106,13 @@ class VenariApi(object):
         )
         endpoint = self.api_url+'/api/findings/get'
         r=VenariRequestor(self.auth,endpoint,'POST',verify_ssl=self.verify_ssl)
-        return VenariQueryResult(r,json_data)
+        return FindingQuery(r,json_data)
 
-    def get_findings_for_job(self,jobUniqueID)->VenariQueryResult:
+    def get_findings_for_job(self,jobUniqueID)->VenariQuery:
         """
         Return all finding detail for a job.
         :param: jobid - A job's Unique Id
-        :return: A VenariQueryResult that holds:
+        :return: A VenariQuery that holds:
         "SummaryData": {
             "RuleUniqueID": "string",
             "RuleType": 0,
@@ -172,17 +144,23 @@ class VenariApi(object):
         )
         endpoint = self.api_url+'/api/findings/get'
         r=VenariRequestor(self.auth,endpoint,'POST',verify_ssl=self.verify_ssl)
-        return VenariQueryResult(r,json_data)
+        return FindingQuery(r,json_data)
 
     def get_templates_for_workspace(self,db:DBData):
         json_data=dict({
-            "DBID":db.DBID,
-            "DBType":db.DBType
+            "DBID":db.id,
+            "DBType":db.type
         })
         endpoint = '/api/job/templates'
-        return self._request('POST',endpoint,json=json_data)
+        resp=self._request('POST',endpoint,json=json_data)
 
-    def start_job_fromtemplate(self,job_name,workspace_name,template_name)->VenariResponse:
+        templates=[]
+        if(resp.hasData()):
+            templates=[JobTemplate.from_data(x) for x in resp.data ]
+            return templates
+
+
+    def start_job_fromtemplate(self,job_name,workspace_name,template_name)->JobStartResponse:
         """
         Start a job
         :param job_name: The name of the job template to run
@@ -224,9 +202,13 @@ class VenariApi(object):
             "JobTemplateName": template_name
             })
         endpoint ='/api/job/startfromworkspace'
-        return self._request('PUT',endpoint=endpoint,json=json_data)
+        resp= self._request('PUT',endpoint=endpoint,json=json_data)
+        if(resp.hasData()):
+            return JobStartResponse.from_data(resp.data)
+        
+
     
-    def get_job_summary(self,jobId:int)->VenariResponse:
+    def get_job_summary(self,jobId:int)->JobSummary:
         """
         Get summary information about a job.
         :param jobId: Job integer identifier
@@ -287,7 +269,11 @@ class VenariApi(object):
         params=dict({
             "jobID":jobId
         })
-        return self._request("GET",'/api/job/summary',params=params)
+        resp=self._request("GET",'/api/job/summary',params=params)
+        if(resp.hasData()):
+            j=JobSummary.from_results(resp.data)
+            return j
+
     
     def _request(self, method:str, endpoint:str,json:dict=None,params:dict=None):
         requestor=VenariRequestor(self.auth,self.api_url+endpoint,method,verify_ssl=self.verify_ssl)
