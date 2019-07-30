@@ -2,9 +2,11 @@
 import click
 import  getpass
 from os import path
-import sys,traceback
+import traceback
 from pathlib import Path
-from venari import *
+from venari_api import  VenariApi,VenariAuth,RequestHelper
+import sys
+import json
 
 class CommonParams:
     url:str=None
@@ -19,9 +21,9 @@ class OAuthLoginInfo:
 @click.pass_context
 @click.option('--url',nargs=1,required=True)
 @click.option('--verify_ssl/--no_verify_ssl',default=True)
-
-def cli(ctx,url,verify_ssl):
+def cli(ctx,url:str,verify_ssl):
      #Don't do an init if user is just asking for help.
+     print('hi')
      if(not "--help" in sys.argv):
           ctx.obj=CommonParams()
           ctx.obj.url=url
@@ -41,7 +43,7 @@ def login(ctx,client_id,extra_idp,secret):
           #load authentication info from file if we have it..
           idp=VenariApi.get_idp_info(ctx.obj.url)
           token_endpoint=VenariApi.get_token_endpoint(idp.authority)
-          auth=VenariAuth.login(token_endpoint,secret,client_id,extra_idp)
+          VenariAuth.login(token_endpoint,secret,client_id,extra_idp)
           saveCredentials(ctx.obj.url,token_endpoint,secret,client_id,extra_idp)
           print("login successful")
      except Exception as e:
@@ -98,10 +100,10 @@ def start(ctx,workspace_name,name,template):
 def workspace():
     pass
 
-@workspace.command()
+@workspace.command(name="list")
 @click.pass_context
 @click.option('--name',nargs=1,help="workspace name")
-def list(ctx,name):
+def list_workspace(ctx,name):
      workspaces=[]
      if(name):
           w=ctx.obj.api.get_workspace_by_name(name)
@@ -119,10 +121,10 @@ def list(ctx,name):
 def finding():
      pass
 
-@finding.command()
+@finding.command(name="list")
 @click.pass_context
 @click.option('--jobid',nargs=1,required=True)
-def list(ctx,jobid):
+def list_finding(ctx,jobid):
      query=ctx.obj.api.get_findings_for_job(jobid)
      print(f"{'Name':<25} {'Severity':10} {'Location':<40} {'P. Location':15} {'P. Name':15} {'Url':30}")
      i=0
@@ -136,10 +138,10 @@ def list(ctx,jobid):
 def template():
      pass
 
-@template.command()
+@template.command(name="list")
 @click.pass_context
 @click.option('--workspace',nargs=1,required=True)
-def list(ctx,workspace):
+def list_template(ctx,workspace):
      workspace=ctx.obj.api.get_workspace_by_name(workspace)
      templates=ctx.obj.api.get_templates_for_workspace(workspace.db_data)
      print(f"{'Name':<25} {'Id':<3}")
@@ -189,4 +191,5 @@ def loadCredentials(master_url:str)->VenariAuth:
      return resp
 
 if __name__ == '__main__':
-     cli(obj={})
+     print(sys.argv[1:])
+     cli()

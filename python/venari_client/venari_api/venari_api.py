@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-__author__ = "Brandon Spruth (bspruth@gmail.com)"
-__copyright__ = "(C) 2019 Sprtuh, Co."
-__contributors__ = ["Brandon Spruth"]
+__author__ = "Chris Szabo (chris.szabo@assertsecurity.io)"
+__copyright__ = "(C) 2019 Assert Security"
+__contributors__ = ["Chris Szabo"]
 __status__ = "Planning"
 __license__ = "MIT"
 __since__ = "0.0.1"
@@ -12,15 +12,15 @@ import urllib3
 import json
 import requests
 import types
-from venari_requestor import *
-from venari_auth import *
-from venariapi import __version__ as version
+
+from venari_api.venari_requestor import VenariRequestor
+from venari_api.venari_auth import VenariAuth,IdpInfo,RequestHelper
 import argparse
 from enum import IntEnum
-from venari_query import VenariQuery
-from venari_query import JobQuery
-from venari_query import FindingQuery
-from models import *
+from venari_api.venari_query import VenariQuery
+from venari_api.venari_query import JobQuery
+from venari_api.venari_query import FindingQuery
+import venari_api.models as models
 
 class VenariApi(object):
     def __init__(self, auth, api_url, verify_ssl=True, timeout=60, user_agent=None,
@@ -32,7 +32,7 @@ class VenariApi(object):
         self.auth=auth
 
         if not user_agent:
-            self.user_agent = 'venari_api/' + version
+            self.user_agent = 'venari_api/' + client_version
         else:
             self.user_agent = user_agent
 
@@ -56,20 +56,20 @@ class VenariApi(object):
         response=RequestHelper.request('GET',url)
         return response.data["token_endpoint"]
     
-    def get_workspace_by_name(self,workspaceName)->Workspace:
+    def get_workspace_by_name(self,workspaceName)->models.Workspace:
         endpoint='/api/workspace'
         data=dict({
             "Name":workspaceName
         })
         result=self._request('POST',endpoint,json=data)
         if(result.hasData()):
-           return Workspace.from_data(result.data)
+           return models.Workspace.from_data(result.data)
 
     def get_workspaces(self):
         endpoint='/api/workspace/summaries'
         result=self._request('GET',endpoint)
         if(result.hasData()):
-            return [Workspace.from_data(i) for i in result.data]
+            return [models.Workspace.from_data(i) for i in result.data]
 
 
     def get_jobs_for_workspace(self,Id)->JobQuery:
@@ -90,7 +90,7 @@ class VenariApi(object):
         r=VenariRequestor(self.auth,endpoint,'POST',verify_ssl=self.verify_ssl)
         return JobQuery(r,json_data)
 
-    def get_findings_for_workspace(self,dbdata:DBData)->VenariQuery:
+    def get_findings_for_workspace(self,dbdata:models.DBData)->VenariQuery:
         """
         Return all workspace/app/scan historical finding detail summary.
         :param:
@@ -138,7 +138,7 @@ class VenariApi(object):
             {
                 "DBData": {
                     "DBID": jobUniqueID,
-                    "DBType": DBTypeEnum.Job
+                    "DBType": models.DBTypeEnum.Job
                 },
             }
         )
@@ -146,7 +146,7 @@ class VenariApi(object):
         r=VenariRequestor(self.auth,endpoint,'POST',verify_ssl=self.verify_ssl)
         return FindingQuery(r,json_data)
 
-    def get_templates_for_workspace(self,db:DBData):
+    def get_templates_for_workspace(self,db:models.DBData):
         json_data=dict({
             "DBID":db.id,
             "DBType":db.type
@@ -156,11 +156,11 @@ class VenariApi(object):
 
         templates=[]
         if(resp.hasData()):
-            templates=[JobTemplate.from_data(x) for x in resp.data ]
+            templates=[models.JobTemplate.from_data(x) for x in resp.data ]
             return templates
 
 
-    def start_job_fromtemplate(self,job_name,workspace_name,template_name)->JobStartResponse:
+    def start_job_fromtemplate(self,job_name,workspace_name,template_name)->models.JobStartResponse:
         """
         Start a job
         :param job_name: The name of the job template to run
@@ -204,11 +204,11 @@ class VenariApi(object):
         endpoint ='/api/job/startfromworkspace'
         resp= self._request('PUT',endpoint=endpoint,json=json_data)
         if(resp.hasData()):
-            return JobStartResponse.from_data(resp.data)
+            return models.JobStartResponse.from_data(resp.data)
         
 
     
-    def get_job_summary(self,jobId:int)->JobSummary:
+    def get_job_summary(self,jobId:int)->models.JobSummary:
         """
         Get summary information about a job.
         :param jobId: Job integer identifier
@@ -271,7 +271,7 @@ class VenariApi(object):
         })
         resp=self._request("GET",'/api/job/summary',params=params)
         if(resp.hasData()):
-            j=JobSummary.from_results(resp.data)
+            j=models.JobSummary.from_results(resp.data)
             return j
 
     

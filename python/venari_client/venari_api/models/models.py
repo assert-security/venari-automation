@@ -2,22 +2,8 @@ import typing
 import datetime
 from  dateutil.parser import parse
 from enum import IntEnum
-
-class DBTypeEnum(IntEnum):
-    Global=0
-    Job=1
-    Workspace=2
-
-class DBData(object):
-    def __init__ (self,id,type:DBTypeEnum):
-        self.id=id
-        self.type=type
-
-    @staticmethod 
-    def from_dict(json:dict):
-        data=DBData(json["DBID"],json["DBType"])
-        return data
-
+from venari_api.models.db_data import DBData
+from venari_api.models.db_type_enum import DBTypeEnum
 
 class JobStatus(IntEnum):
     Ready=0

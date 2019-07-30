@@ -1,7 +1,7 @@
 import json
 import requests
-from venari_auth import *
-from request_helper import *
+from venari_api.venari_auth import VenariAuth
+from venari_api.request_helper import RequestHelper,VenariResponse
 
 class VenariRequestor(object):
     def __init__(self,auth:VenariAuth,endpoint:str,method:str,verify_ssl=True):

@@ -3,7 +3,8 @@
 import os
 import sys
 
-from venariapi import __version__ as version
+#from venari_api import __version__ as version
+version="1.0"
 
 try:
     from setuptools import setup
@@ -32,8 +33,8 @@ if sys.argv[-1] == 'publish-test':
     sys.exit(0)
 
 setup(
-    name='venariapi',
-    packages=['venariapi'],
+    name='venari_api',
+    packages=['venari_api','venari_api.models'],
     version=version,
     description='Python library for Venari',
     long_description=readme,
@@ -41,7 +42,7 @@ setup(
     author_email='bsputh@gmail.com',
     license='MIT',
     zip_safe=True,
-    install_requires = ['requests'],
+    install_requires = ['requests','python-dateutil'],
     keywords=['venari', 'api', 'security', 'software', 'dast'],
     classifiers=['Development Status :: 4 - Beta',
                  'Intended Audience :: Developers',

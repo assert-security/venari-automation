@@ -3,7 +3,8 @@ import requests
 
 class RequestHelper(object):
     verify_ssl:bool = False #class property to enable ssl cert enforcement for all venari api calls.
-    
+    timeout:int=30
+
     @staticmethod 
     def __get_json(response)->str:
         if response.text:
@@ -33,7 +34,7 @@ class RequestHelper(object):
         try:
             response = requests.request(method=method, url=endpoint, params=params, files=files,
                                         headers=headers, json=json, data=data,
-                                        verify=RequestHelper.verify_ssl, stream=stream)
+                                        verify=RequestHelper.verify_ssl, stream=stream,timeout=RequestHelper.timeout)
             try:
                 response.raise_for_status()
                 response_code = response.status_code
@@ -67,7 +68,7 @@ class RequestHelper(object):
             return VenariResponse(message='A connection error occurred. {0}'.format(e), success=False)
         
         except requests.exceptions.Timeout:
-            return VenariResponse(message='The request timed out after ' + str(self.timeout) + ' seconds.',
+            return VenariResponse(message='The request timed out after ' + str(RequestHelper.timeout) + ' seconds.',
                                     success=False)
         except requests.exceptions.RequestException as e:
             return VenariResponse(message='There was an error while handling the request. {0}'.format(e),

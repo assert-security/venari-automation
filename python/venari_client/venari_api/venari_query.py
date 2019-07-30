@@ -1,5 +1,6 @@
-from venari_requestor import *
-from models import *
+import json
+from venari_api.venari_requestor import VenariRequestor,VenariResponse
+from venari_api.models import Workspace,Job,Finding
 
 class VenariQuery(object):
     default_page_size:int=100
