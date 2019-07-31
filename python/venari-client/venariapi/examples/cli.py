@@ -7,6 +7,7 @@ from pathlib import Path
 from venariapi import  VenariApi,VenariAuth,RequestHelper
 import sys
 import json
+import venariapi.examples.credentials as creds
 
 class CommonParams:
     url:str=None
@@ -27,7 +28,7 @@ def cli(ctx,url:str,verify_ssl):
           ctx.obj=CommonParams()
           ctx.obj.url=url
           RequestHelper.verify_ssl=verify_ssl
-          auth=loadCredentials(url)
+          auth=creds.loadCredentials(url)
           ctx.obj.api=VenariApi(auth,url)
 
 @cli.command()
@@ -43,7 +44,7 @@ def login(ctx,client_id,extra_idp,secret):
           idp=VenariApi.get_idp_info(ctx.obj.url)
           token_endpoint=VenariApi.get_token_endpoint(idp.authority)
           VenariAuth.login(token_endpoint,secret,client_id,extra_idp)
-          saveCredentials(ctx.obj.url,token_endpoint,secret,client_id,extra_idp)
+          creds.saveCredentials(ctx.obj.url,token_endpoint,secret,client_id,extra_idp)
           print("login successful")
      except Exception as e:
           print(f"login failed: {repr(e)}")
@@ -148,46 +149,6 @@ def list_template(ctx,workspace):
           print(f"{t.name:<25} {t.id}")
           pass
 
-def saveCredentials(master_url,token_endpoint:str,secret:str,client_id:str,extra:dict):
-     credentials:dict={
-          'master_url': master_url,
-          'token_endpoint':token_endpoint,
-          'client_secret':secret,
-          'client_id':client_id,
-          'extra':extra
-     }
-
-     saveFileName=str(Path.home())+'/venari_cli.json'
-     urlmap=dict={}
-     data=dict=[{}]
-     if(path.exists(saveFileName)):
-          with open(saveFileName) as infile:
-               data = json.load(infile)
-          #add/replace existing credentials for master_url
-          urlmap={x["master_url"]:x for x in data }
-
-     urlmap[master_url]=credentials
-
-     with open(saveFileName, 'w+') as outfile:  
-          #json.dump(list(urlmap.values()), outfile)
-          json.dump([obj for obj in urlmap.values()], outfile)
-
-def loadCredentials(master_url:str)->VenariAuth:
-     resp=None
-     file_name=str(Path.home())+'/venari_cli.json'
-     if(path.exists(file_name)):
-          with open(file_name) as infile:
-               data = json.load(infile)
-               urlmap={x["master_url"]:x for x in data }
-               if(master_url in urlmap):
-                    m=urlmap[master_url]
-                    resp=VenariAuth.login(
-                         m['token_endpoint'],
-                         m['client_secret'],
-                         m['client_id'],
-                         m['extra']
-                    )
-     return resp
 
 if __name__ == '__main__':
      print(sys.argv[1:])

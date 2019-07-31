@@ -42,7 +42,7 @@ setup(
     author_email='chris.szabo@assertsecurity.io',
     license='MIT',
     zip_safe=True,
-    install_requires = ['python-dateutil'],
+    install_requires = ['python-dateutil','requests','click'],
     keywords=['venari', 'api', 'security', 'software', 'dast'],
     classifiers=['Development Status :: 4 - Beta',
                  'Intended Audience :: Developers',

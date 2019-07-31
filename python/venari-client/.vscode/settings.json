@@ -1,6 +1,3 @@
 {
-    "python.pythonPath": "C:\\dev\\venari-automation\\python\\venari_env\\Scripts\\python.exe",
-    "python.linting.pylintEnabled": true,
-    "python.linting.enabled": true,
-    "python.linting.pylintPath":"C:\\dev\\venari-automation\\python\\venari_env\\Scripts\\pylint.exe"
 }
+ 
