@@ -1,4 +1,4 @@
-from venari_api.models.db_type_enum import DBTypeEnum
+from venariapi.models.db_type_enum import DBTypeEnum
 
 class DBData(object):
     def __init__ (self,id,type:DBTypeEnum):

@@ -1,4 +1,4 @@
-from  venari_api.request_helper import RequestHelper
+from  venariapi.request_helper import RequestHelper
 import json
 
 class IdpInfo(object):

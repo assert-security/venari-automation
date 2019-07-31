@@ -4,7 +4,7 @@ import  getpass
 from os import path
 import traceback
 from pathlib import Path
-from venari_api import  VenariApi,VenariAuth,RequestHelper
+from venariapi import  VenariApi,VenariAuth,RequestHelper
 import sys
 import json
 
@@ -23,7 +23,6 @@ class OAuthLoginInfo:
 @click.option('--verify_ssl/--no_verify_ssl',default=True)
 def cli(ctx,url:str,verify_ssl):
      #Don't do an init if user is just asking for help.
-     print('hi')
      if(not "--help" in sys.argv):
           ctx.obj=CommonParams()
           ctx.obj.url=url

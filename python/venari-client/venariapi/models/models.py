@@ -2,8 +2,8 @@ import typing
 import datetime
 from  dateutil.parser import parse
 from enum import IntEnum
-from venari_api.models.db_data import DBData
-from venari_api.models.db_type_enum import DBTypeEnum
+from venariapi.models.db_data import DBData
+from venariapi.models.db_type_enum import DBTypeEnum
 
 class JobStatus(IntEnum):
     Ready=0

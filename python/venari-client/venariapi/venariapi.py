@@ -13,14 +13,14 @@ import json
 import requests
 import types
 
-from venari_api.venari_requestor import VenariRequestor
-from venari_api.venari_auth import VenariAuth,IdpInfo,RequestHelper
+from venariapi.venari_requestor import VenariRequestor
+from venariapi.venari_auth import VenariAuth,IdpInfo,RequestHelper
 import argparse
 from enum import IntEnum
-from venari_api.venari_query import VenariQuery
-from venari_api.venari_query import JobQuery
-from venari_api.venari_query import FindingQuery
-import venari_api.models as models
+from venariapi.venari_query import VenariQuery
+from venariapi.venari_query import JobQuery
+from venariapi.venari_query import FindingQuery
+import venariapi.models as models
 
 class VenariApi(object):
     def __init__(self, auth, api_url, verify_ssl=True, timeout=60, user_agent=None,
@@ -32,7 +32,7 @@ class VenariApi(object):
         self.auth=auth
 
         if not user_agent:
-            self.user_agent = 'venari_api/' + client_version
+            self.user_agent = 'venariapi/' + client_version
         else:
             self.user_agent = user_agent
 
