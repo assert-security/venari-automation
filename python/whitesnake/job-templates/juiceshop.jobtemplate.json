@@ -15,7 +15,10 @@
             "op": "replace"
         },
         {
-            "value": [],
+            "value": [
+                "Set User Name",
+                "Track Order"
+            ],
             "path": "/WorkflowSettings/Workflows",
             "op": "replace"
         },
@@ -44,6 +47,22 @@
                 {
                     "Name": "Answer to your security question",
                     "Value": "blah"
+                },
+                {
+                    "Name": "xxxx-0123456789abcdef",
+                    "Value": "129871234567"
+                },
+                {
+                    "Name": "username",
+                    "Value": "user@foo.io"
+                },
+                {
+                    "Name": "Enter Username",
+                    "Value": "129877654321"
+                },
+                {
+                    "Name": "Email:",
+                    "Value": "user@foo.io"
                 }
             ],
             "path": "/WorkflowSettings/RunSettings/Parameters",
@@ -98,7 +117,7 @@
         },
         {
             "value": [
-                "http://localhost:3000"
+                "http://localhost:3000/"
             ],
             "path": "/ResourceScope/SeedResources/StartUrls",
             "op": "replace"
@@ -156,6 +175,10 @@
                     "Action": 8
                 },
                 {
+                    "Pattern": "__VIEWSTATEGENERATOR",
+                    "Action": 8
+                },
+                {
                     "Pattern": "__EVENTVALIDATION",
                     "Action": 8
                 },
@@ -176,52 +199,6 @@
             "op": "replace"
         },
         {
-            "value": [
-                {
-                    "Name": "__cfduid",
-                    "Location": 0
-                },
-                {
-                    "Name": "__EVENTARGUMENT",
-                    "Location": 0
-                },
-                {
-                    "Name": "__EVENTTARGET",
-                    "Location": 0
-                },
-                {
-                    "Name": "__EVENTVALIDATION",
-                    "Location": 0
-                },
-                {
-                    "Name": "__LASTFOCUS",
-                    "Location": 0
-                },
-                {
-                    "Name": "__VIEWSTATE",
-                    "Location": 0
-                },
-                {
-                    "Name": "__VIEWSTATEENCRYPTED",
-                    "Location": 0
-                },
-                {
-                    "Name": "ASP.NET_SessionId",
-                    "Location": 0
-                },
-                {
-                    "Name": "JSESSIONID",
-                    "Location": 0
-                },
-                {
-                    "Name": "PHPSESSID",
-                    "Location": 0
-                }
-            ],
-            "path": "/ParserSettings/StateParameters",
-            "op": "replace"
-        },
-        {
             "value": [],
             "path": "/HttpMessageConfig/StateControlData/CustomHeaders",
             "op": "replace"
@@ -236,11 +213,6 @@
                 }
             ],
             "path": "/HttpMessageConfig/StateControlData/AdditionalCookies",
-            "op": "replace"
-        },
-        {
-            "value": "http://localhost:3000",
-            "path": "/Name",
             "op": "replace"
         },
         {
@@ -302,7 +274,7 @@
                         {
                             "Name": "ExcludeClickLabels",
                             "DisplayName": "Exclude Click Labels",
-                            "Value": "*signin*,*login*,\"*sign in*\",*sign-in*,*sign_in*,\"*log in*\",*log-in*,*log_in*,\"*log back in*\",*logon*,*signon*,\"*log on*\",\"*sign on*\",*signup*,\"*sign up*\",*sign-up*,*sign_up*,*fi-lock*,*logout*,\"*log out*\",*log-out*,*log_out*,*signout*,\"*sign out*\",*sign-out*,*sign_out*,*signoff*,\"*sign off*\",*sign-off*,*sign_off*,english,language,*delete*,*cancel*,*reset*",
+                            "Value": "*signin*,*login*,\"*sign in*\",*sign-in*,*sign_in*,\"*log in*\",*log-in*,*log_in*,\"*log back in*\",*logon*,*signon*,\"*log on*\",\"*sign on*\",*signup*,\"*sign up*\",*sign-up*,*sign_up*,*fi-lock*,*auth*,*logout*,\"*log out*\",*log-out*,*log_out*,*signout*,\"*sign out*\",*sign-out*,*sign_out*,*signoff*,\"*sign off*\",*sign-off*,*sign_off*,english,language,*delete*,*cancel*,*reset*",
                             "DataType": 3,
                             "List": null
                         },
@@ -330,7 +302,7 @@
                         {
                             "Name": "ExcludeActionPaths",
                             "DisplayName": "Exclude Action Paths",
-                            "Value": null,
+                            "Value": "\"http://localhost:3000/#/search->Click 'IMG:default'->Click 'Track Orders'\",\"http://localhost:3000/#/search->Click 'IMG:default'->Click 'user@foo.io'->Click 'Set Username'\"",
                             "DataType": 3,
                             "List": null
                         },
@@ -368,9 +340,7 @@
                             "Value": "Click",
                             "DataType": 4,
                             "List": [
-                                "Navigate Root",
                                 "Click",
-                                "Save Link",
                                 "Ignore"
                             ]
                         },
@@ -388,7 +358,7 @@
                         {
                             "Name": "ExcludeProbeTrafficParameters",
                             "DisplayName": "Exclude Probe Traffic Parameters",
-                            "Value": "*csrf*,*token*,*state*",
+                            "Value": "*state*",
                             "DataType": 3,
                             "List": null
                         },
@@ -597,6 +567,34 @@
                     "BalanceWithThreshold": 0,
                     "ConfigItems": [
                         {
+                            "Name": "CommonRootDirectories",
+                            "DisplayName": "Common Directories (root path)",
+                            "Value": "True",
+                            "DataType": 5,
+                            "List": null
+                        },
+                        {
+                            "Name": "CommonRootFiles",
+                            "DisplayName": "Common Files (root path)",
+                            "Value": "True",
+                            "DataType": 5,
+                            "List": null
+                        },
+                        {
+                            "Name": "UseLargeRootResourceLists",
+                            "DisplayName": "Use Large Root Path Lists",
+                            "Value": "False",
+                            "DataType": 5,
+                            "List": null
+                        },
+                        {
+                            "Name": "ApiPaths",
+                            "DisplayName": "API Paths",
+                            "Value": "True",
+                            "DataType": 5,
+                            "List": null
+                        },
+                        {
                             "Name": "InvertGetAndPostParameters",
                             "DisplayName": "Invert POST/GET parameters",
                             "Value": "True",
@@ -620,20 +618,6 @@
                         {
                             "Name": "SiteMapsRootPath",
                             "DisplayName": "Site Maps (root path)",
-                            "Value": "True",
-                            "DataType": 5,
-                            "List": null
-                        },
-                        {
-                            "Name": "CommonRootDirectories",
-                            "DisplayName": "Common Directories (root path)",
-                            "Value": "True",
-                            "DataType": 5,
-                            "List": null
-                        },
-                        {
-                            "Name": "CommonRootFiles",
-                            "DisplayName": "Common Files (root path)",
                             "Value": "True",
                             "DataType": 5,
                             "List": null
@@ -684,6 +668,38 @@
                             "DisplayName": "Save 404 traffic for force browsed URLs",
                             "Value": "False",
                             "DataType": 5,
+                            "List": null
+                        }
+                    ],
+                    "ParentModules": null
+                },
+                {
+                    "UniqueID": "6c5cd63e-d7b0-4a3e-997e-bd0af5198fec",
+                    "DisplayName": null,
+                    "MaxConcurrent": 15,
+                    "Isolate": false,
+                    "MaxDurationTicks": null,
+                    "NodeProcessCount": 1,
+                    "BalanceWithModules": null,
+                    "BalanceWithThreshold": 0,
+                    "ConfigItems": [
+                        {
+                            "Name": "ProbeSaveMode",
+                            "DisplayName": "Probe Save Mode",
+                            "Value": "All",
+                            "DataType": 4,
+                            "List": [
+                                "None",
+                                "All",
+                                "Workflow Parameters Only",
+                                "Traffic Parameters Only"
+                            ]
+                        },
+                        {
+                            "Name": "ExcludeProbeTrafficParameters",
+                            "DisplayName": "Exclude Probe Traffic Parameters",
+                            "Value": "*state*",
+                            "DataType": 3,
                             "List": null
                         }
                     ],

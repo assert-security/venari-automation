@@ -1,0 +1,47 @@
+Header:
+  Name: Track Order
+  ApplicationName: Juiceshop
+  RequiresLogin: True
+Actions:
+- Navigate:
+    Url: '{endpoint}/#/search'
+- WaitForContent: {}
+- Snapshot: {}
+- Click:
+    Skip: 1
+    Nearest: Any
+    Patterns:
+    - '*'
+    ActionIndex: 0
+- WaitForContent:
+    ActionIndex: 0
+- Snapshot:
+    ActionIndex: 0
+- Click:
+    Nearest: Any
+    Patterns:
+    - Track Orders
+    ActionIndex: 1
+- WaitForContent:
+    ActionIndex: 1
+- Snapshot:
+    ActionIndex: 1
+- FindTextInputs:
+    Take: 1
+    Nearest: Any
+    Patterns:
+    - xxxx-0123456789abcdef
+    ActionIndex: 2
+- SendText:
+    Text: '{xxxx-0123456789abcdef}'
+    Overwrite: true
+    ActionIndex: 2
+- Click:
+    Nearest: Any
+    Patterns:
+    - Track
+    ActionIndex: 2
+- WaitForContent:
+    ActionIndex: 2
+- Snapshot:
+    ActionIndex: 2

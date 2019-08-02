@@ -1,0 +1,57 @@
+Header:
+  Name: Set User Name
+  ApplicationName: Juiceshop
+  RequiresLogin: True
+Actions:
+- Navigate:
+    Url: '{endpoint}/#/search'
+- WaitForContent: {}
+- Snapshot: {}
+- Click:
+    Skip: 1
+    Nearest: Any
+    Patterns:
+    - '*'
+    ActionIndex: 0
+- WaitForContent:
+    ActionIndex: 0
+- Snapshot:
+    ActionIndex: 0
+- Click:
+    Nearest: Any
+    Patterns:
+    - '{username}'
+    ActionIndex: 1
+- WaitForContent:
+    ActionIndex: 1
+- Snapshot:
+    ActionIndex: 1
+- FindTextInputs:
+    Take: 1
+    Nearest: Any
+    Patterns:
+    - Enter Username
+    ActionIndex: 2
+- SendText:
+    Text: '{Enter Username}'
+    Overwrite: true
+    ActionIndex: 2
+- FindTextInputs:
+    Take: 1
+    Nearest: Top
+    Patterns:
+    - 'Email:'
+    ActionIndex: 2
+- SendText:
+    Text: '{Email:}'
+    Overwrite: true
+    ActionIndex: 2
+- Click:
+    Nearest: Any
+    Patterns:
+    - Set Username
+    ActionIndex: 2
+- WaitForContent:
+    ActionIndex: 2
+- Snapshot:
+    ActionIndex: 2
