@@ -21,6 +21,7 @@ from venariapi.venari_query import VenariQuery
 from venariapi.venari_query import JobQuery
 from venariapi.venari_query import FindingQuery
 import venariapi.models as models
+from venariapi.models.scan_compare_result_data import ScanCompareResultData
 
 class VenariApi(object):
     def __init__(self, auth, api_url, verify_ssl=True, timeout=60, user_agent=None,
@@ -70,7 +71,6 @@ class VenariApi(object):
         result=self._request('GET',endpoint)
         if(result.hasData()):
             return [models.Workspace.from_data(i) for i in result.data]
-
 
     def get_jobs_for_workspace(self,Id)->JobQuery:
         json_data = dict({
@@ -159,7 +159,6 @@ class VenariApi(object):
             templates=[models.JobTemplate.from_data(x) for x in resp.data ]
             return templates
 
-
     def start_job_fromtemplate(self,job_name,workspace_name,template_name)->models.JobStartResponse:
         """
         Start a job
@@ -205,8 +204,6 @@ class VenariApi(object):
         resp= self._request('PUT',endpoint=endpoint,json=json_data)
         if(resp.hasData()):
             return models.JobStartResponse.from_data(resp.data)
-        
-
     
     def get_job_summary(self,jobId:int)->models.JobSummary:
         """
@@ -274,6 +271,15 @@ class VenariApi(object):
             j=models.JobSummary.from_results(resp.data)
             return j
 
+    def get_scan_compare_data(self, baseline_json:str, comparison_job_uid:str) -> ScanCompareResultData:
+        data = dict({
+            "BaselineJSON": baseline_json,
+            "ComparisonJobID": comparison_job_uid
+        })
+        response = self._request("POST",'/api/qa/get/comparison/baseline', json = data)
+        print(data)
+        if (response.hasData()):
+            return ScanCompareResultData.from_dict(response.data)
     
     def _request(self, method:str, endpoint:str,json:dict=None,params:dict=None):
         requestor=VenariRequestor(self.auth,self.api_url+endpoint,method,verify_ssl=self.verify_ssl)

@@ -1,0 +1,79 @@
+[
+  {
+    "Severity": "Critical",
+    "Name": "Cross Site Scripting",
+    "RuleType": "Fuzz",
+    "Location": "https://google-gruyere.appspot.com/679662819249864814433767996093426346573/",
+    "Url": "https://google-gruyere.appspot.com:443/679662819249864814433767996093426346573/%3Cscript%3Ealert(1728946769)%3C/script%3E",
+    "ParameterName": "/",
+    "ParameterValue": "<script>alert(1728946769)</script>",
+    "ParameterLocation": "AppendedFile",
+    "Method": "GET"
+  },
+  {
+    "Severity": "Critical",
+    "Name": "Cross Site Scripting",
+    "RuleType": "Fuzz",
+    "Location": "https://google-gruyere.appspot.com/679662819249864814433767996093426346573/",
+    "Url": "https://google-gruyere.appspot.com:443/679662819249864814433767996093426346573/%3Cscript%3Ealert(153034677)%3C/script%3E",
+    "ParameterName": "679662819249864814433767996093426346573",
+    "ParameterValue": "<script>alert(153034677)</script>",
+    "ParameterLocation": "FileSimple",
+    "Method": "GET"
+  },
+  {
+    "Severity": "Critical",
+    "Name": "Cross Site Scripting",
+    "RuleType": "Fuzz",
+    "Location": "Click 'All snippets (https://google-gruyere.appspot.com/679662819249864814433767996093426346573/snippets.gtl?uid=cheddar)'",
+    "Url": "https://google-gruyere.appspot.com:443/679662819249864814433767996093426346573/snippets.gtl?uid=%27%09_%22%3E%3Cscript%3Ealert%28458880055%29%3C%2Fscript%3E",
+    "ParameterName": "uid",
+    "ParameterValue": "'\t_\"><script>alert(458880055)</script>",
+    "ParameterLocation": "QueryString",
+    "Method": "GET"
+  },
+  {
+    "Severity": "Critical",
+    "Name": "Cross Site Scripting",
+    "RuleType": "Fuzz",
+    "Location": "Click 'Sign in (https://google-gruyere.appspot.com/679662819249864814433767996093426346573/login)'",
+    "Url": "https://google-gruyere.appspot.com:443/679662819249864814433767996093426346573/login/%3Cscript%3Ealert(2120508848)%3C/script%3E",
+    "ParameterName": "login",
+    "ParameterValue": "<script>alert(2120508848)</script>",
+    "ParameterLocation": "AppendedFile",
+    "Method": "GET"
+  },
+  {
+    "Severity": "Critical",
+    "Name": "Cross Site Scripting",
+    "RuleType": "Fuzz",
+    "Location": "Click 'All snippets (https://google-gruyere.appspot.com/679662819249864814433767996093426346573/snippets.gtl?uid=cheddar)'",
+    "Url": "https://google-gruyere.appspot.com:443/679662819249864814433767996093426346573/snippets.gtl/%3Cscript%3Ealert(1577622693)%3C/script%3E?uid=cheddar",
+    "ParameterName": "snippets.gtl",
+    "ParameterValue": "<script>alert(1577622693)</script>",
+    "ParameterLocation": "AppendedFile",
+    "Method": "GET"
+  },
+  {
+    "Severity": "Critical",
+    "Name": "Cross Site Scripting",
+    "RuleType": "Fuzz",
+    "Location": "Click 'Sign up (https://google-gruyere.appspot.com/679662819249864814433767996093426346573/newaccount.gtl)'",
+    "Url": "https://google-gruyere.appspot.com:443/679662819249864814433767996093426346573/newaccount.gtl/%3Cscript%3Ealert(1515703152)%3C/script%3E",
+    "ParameterName": "newaccount.gtl",
+    "ParameterValue": "<script>alert(1515703152)</script>",
+    "ParameterLocation": "AppendedFile",
+    "Method": "GET"
+  },
+  {
+    "Severity": "Critical",
+    "Name": "Cross Site Scripting",
+    "RuleType": "Fuzz",
+    "Location": "Click 'Sign up (https://google-gruyere.appspot.com/679662819249864814433767996093426346573/newaccount.gtl)'->Click 'Create account'",
+    "Url": "https://google-gruyere.appspot.com:443/679662819249864814433767996093426346573/saveprofile/%3Cscript%3Ealert(1842871337)%3C/script%3E?action=new&uid=129871501965&pw=129872926715&is_author=True",
+    "ParameterName": "saveprofile",
+    "ParameterValue": "<script>alert(1842871337)</script>",
+    "ParameterLocation": "AppendedFile",
+    "Method": "GET"
+  }
+]
