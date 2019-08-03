@@ -1,6 +1,36 @@
 import json
 import requests
 
+class VenariResponse(object):
+    """Container for all Venari API responses, even errors."""
+
+    def __init__(self, success, message='OK', response_code=-1, data=None):
+        self.message = message
+        self.success = success
+        self.response_code = response_code
+        self.data = data
+
+    def __str__(self):
+        if self.data:
+            return str(self.data)
+        else:
+            return self.message
+
+    def data_json(self, pretty=False):
+        """Returns the data as a valid JSON string."""
+        if pretty:
+            return json.dumps(self.data, sort_keys=True, indent=4, separators=(',', ': '))
+        else:
+            return json.dumps(self.data)
+
+    def hasData(self):
+        return self.response_code==200 and self.data != ""
+
+class VenariException(Exception):
+    def __init__(self,result:VenariResponse):
+        super().__init__(result.message)
+        pass
+
 class RequestHelper(object):
     verify_ssl:bool = False #class property to enable ssl cert enforcement for all venari api calls.
     timeout:int=30
@@ -49,52 +79,35 @@ class RequestHelper(object):
             
             except requests.exceptions.HTTPError as e:
                 if response.status_code == 401:
-                    return VenariResponse(
-                        message='There was an error handling your request. {} {}'.format(response.content, e),
-                        success=False)
+                    raise VenariException(VenariResponse(
+                        message='Authentication Error. {} {}'.format(response.content, e),
+                        success=False,
+                        response_code=401))
+                if response.status_code == 404:
+                    raise VenariException(VenariResponse(
+                        message='Resource Not Found. {} {}'.format(response.content, e),
+                        success=False,
+                        response_code=401))
                 else:
                     data=RequestHelper.__get_json(response)
                     message=repr(e)
                     if(data and type(data) is dict and data["error"]):
                         message=f"Api call failed: {data['error']}"
-                    return VenariResponse(
+                    raise VenariException(VenariResponse(
                         message=message,
                         response_code=response.status_code,
-                        success=False)
+                        success=False))
         except requests.exceptions.SSLError as e:
-            return VenariResponse(message='An SSL error occurred. {0}'.format(e), success=False)
+            raise VenariException(VenariResponse(message='An SSL error occurred. {0}'.format(e), success=False))
         
         except requests.exceptions.ConnectionError as e:
-            return VenariResponse(message='A connection error occurred. {0}'.format(e), success=False)
+            raise VenariException(VenariResponse(message='A connection error occurred. {0}'.format(e), success=False))
         
         except requests.exceptions.Timeout:
-            return VenariResponse(message='The request timed out after ' + str(RequestHelper.timeout) + ' seconds.',
-                                    success=False)
+            raise VenariException(VenariResponse(message='The request timed out after ' + str(RequestHelper.timeout) + ' seconds.',
+                                    success=False))
+        
         except requests.exceptions.RequestException as e:
-            return VenariResponse(message='There was an error while handling the request. {0}'.format(e),
-                                    success=False)
+            raise VenariException(VenariResponse(message='There was an error while handling the request. {0}'.format(e),
+                                    success=False))
 
-class VenariResponse(object):
-    """Container for all Venari API responses, even errors."""
-
-    def __init__(self, success, message='OK', response_code=-1, data=None):
-        self.message = message
-        self.success = success
-        self.response_code = response_code
-        self.data = data
-
-    def __str__(self):
-        if self.data:
-            return str(self.data)
-        else:
-            return self.message
-
-    def data_json(self, pretty=False):
-        """Returns the data as a valid JSON string."""
-        if pretty:
-            return json.dumps(self.data, sort_keys=True, indent=4, separators=(',', ': '))
-        else:
-            return json.dumps(self.data)
-
-    def hasData(self):
-        return self.response_code==200 and self.data != ""

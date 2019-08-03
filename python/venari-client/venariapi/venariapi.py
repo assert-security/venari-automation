@@ -12,6 +12,8 @@ import urllib3
 import json
 import requests
 import types
+import dpath
+from urllib.parse import urlparse
 
 from venariapi.venari_requestor import VenariRequestor
 from venariapi.venari_auth import VenariAuth,IdpInfo,RequestHelper
@@ -271,6 +273,36 @@ class VenariApi(object):
             j=models.JobSummary.from_results(resp.data)
             return j
 
+    def import_template(self,patch:dict,workspace:str,start_url:str=None):
+        '''
+        Takes a ScanTestDefintion and changes the start url in the specified job template to match what is in the test.
+        Only the scheme, host, and port numbers are used in the start_url. If anything else is specified, an exception
+        is thrown. 
+
+        Argsuments:
+            
+        Returns:
+            A json patch that can be upload as a job template to the master node.
+        '''
+        modified_patch=self._fixup_jobtemplate(patch,start_url)
+        '''
+        {
+        "WorkspaceName": "string",
+        "JobTemplateName": "string",
+        "SettingsType": "string",
+        "SettingsTypeDisplayName": "string",
+        "Patch": {}
+        }
+        '''        
+        params=dict({
+            "WorkspaceName":workspace,
+            "JobTemplateName":modified_patch["JobTemplateName"],
+            "SettingsType":modified_patch["SettingsType"],
+            "SettingsTypeDisplayName":modified_patch["SettingsTypeDisplayName"],
+            "Patch":modified_patch["Patch"]
+        })
+        resp=self._request("POST",'/api/job/template/import',json=params)
+    
     def get_scan_compare_data(self, baseline_json:str, comparison_job_uid:str) -> ScanCompareResultData:
         data = dict({
             "BaselineJSON": baseline_json,
@@ -284,3 +316,23 @@ class VenariApi(object):
     def _request(self, method:str, endpoint:str,json:dict=None,params:dict=None):
         requestor=VenariRequestor(self.auth,self.api_url+endpoint,method,verify_ssl=self.verify_ssl)
         return requestor.request(json,params)
+
+    def _fixup_jobtemplate(self,template_patch:dict,new_baseurl)->dict:
+        endpoint=urlparse(new_baseurl)
+        new_baseurl=f"{endpoint.scheme}://{endpoint.netloc}"
+        
+        print(new_baseurl)
+
+        for(path,value) in dpath.util.search(template_patch,"/Patch",yielded=True):
+            for p in value:
+                if(p["path"]=="/ResourceScope/SeedResources/StartUrls"):
+                    existing_baseurl=(p["value"][0])
+                    print(f"original url: {existing_baseurl}")
+                    endpoint=urlparse(existing_baseurl)
+                    existing_baseurl=f"{endpoint.scheme}://{endpoint.netloc}"
+
+        patch=json.dumps(template_patch)
+        newdata=patch.replace(existing_baseurl,new_baseurl)
+        new_json=json.loads(newdata)
+        return new_json
+

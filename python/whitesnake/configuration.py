@@ -20,13 +20,14 @@ class ScanTestDefinition(object):
         name (str): The name of the test
         workspace (str): The workspace name the scan job belongs to
         template_name (str): The template to run the scan job with.
+        endpoint (str): The base url, formatted as <scheme>://<host>[:port], of the server to scan.
     '''
-    def __init__(self,name:str,workspace:str=None,template_name:str=None,replace_starturl:str=None,template_file:str=None,workflows:List[str]=None):
+    def __init__(self,name:str,workspace:str=None,template_name:str=None,endpoint:str=None,template_file:str=None,workflows:List[str]=None):
         
         self.name=name
         self.template_name=template_name
         self.workspace=workspace
-        self.replace_starturl=replace_starturl
+        self.endpoint=endpoint
         self.template_file=template_file
         self.workflows=workflows
 
