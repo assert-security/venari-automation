@@ -106,26 +106,31 @@ class JobSummary(object):
         id:int,
         name:str,
         counts,
-        raw:dict
+        raw:dict,
+        status:JobStatus
     ):
-        self.assinged_node=assignedNode
-        self.finding_counts=counts
+        self.assigned_node = assignedNode
+        self.finding_counts = counts
+        self.status = status
 
     @classmethod
-    def from_results(cls,results:dict):
-        counts:FindingCount=[]
-        stats=results["Statistics"]
-        if(stats and stats["FindingCounts"]):
-            for c in results["Statistics"]["FindingCounts"]:
-                counts.append(FindingCount.from_dict(c))
+    def from_results(cls, results:dict):
+        counts:FindingCount = []
+        stats = results["Statistics"]
+        if (stats):
+            finding_counts = stats["FindingCounts"]
+            if (finding_counts):
+                for c in finding_counts:
+                    counts.append(FindingCount.from_dict(c))
 
-        return cls(
-            results['AssignedTo'],
-            stats['ID'],
-            "",
-            counts,
-            results
-        )
+        id = None
+        if (stats and stats['ID']):
+            id = stats['ID']
+
+        assigned_to = results['AssignedTo']
+        status = JobStatus(results['Status'])
+
+        return cls(assigned_to, id, "", counts, results, status)
 
 
 class FindingSeverity(IntEnum):
