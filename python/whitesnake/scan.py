@@ -24,22 +24,27 @@ def get_template(test_def:ScanTestDefinition,template_path)->dict:
         data=template_file.read()
         json_data=json.loads(data)
         return json_data
+
+def get_config():
+    config=None
+    with open(str(Path.home()) + "/.whitesnake.yaml", 'r') as yaml_file:
+        json_data = yaml_file.read()
+        config = Configuration.from_json(yaml.load(json_data))
+
+    return config
     
+def import_templates(config: Configuration):
+    for application in config.tests:
+        #test:ScanTestDefinition= next (x for x in config.tests if x.name== 'wavesep concurrent')
+        if (application):
+            template = get_template(application,"./job-templates")
+            auth = creds.loadCredentials(config.master_node)
+            #we are authenticated at this point.
+            api = VenariApi(auth,config.master_node)
+            #Import the job template and remap the template's endpoint/hosts to what's in our test.
+            api.import_template(template, application.workspace, application.endpoint)
 
 if __name__ == '__main__':
-
-    config=None
-    with open(str(Path.home())+"/.whitesnake.yaml", 'r') as yaml_file:
-        json_data = yaml_file.read()
-        config=Configuration.from_json(yaml.load(json_data))
-
-    for test in config.tests:
-        #test:ScanTestDefinition= next (x for x in config.tests if x.name== 'wavesep concurrent')
-        if(test):
-            template=get_template(test,"./job-templates")
-            auth=creds.loadCredentials(config.master_node)
-            #we are authenticated at this point.
-            api=VenariApi(auth,config.master_node)
-            #Import the job template and remap the template's endpoint/hosts to what's in our test.
-            api.import_template(template,test.workspace,test.endpoint)
+    config = get_config()
+    import_templates(config)
 

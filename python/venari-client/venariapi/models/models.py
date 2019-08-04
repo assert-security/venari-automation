@@ -16,7 +16,6 @@ class JobStatus(IntEnum):
     def __str__(self):
         return '%s' % self.name
 
-
 class Workspace(object):
     def __init__(self,name:str,id:int,uniqueId:str,db_data:DBData):
         self.name=name
@@ -36,7 +35,6 @@ class Workspace(object):
     @property
     def db_data(self)->DBData:
         return self._db_data
-  
             
 class Job(object):
     def __init__(self,
@@ -132,7 +130,6 @@ class JobSummary(object):
 
         return cls(assigned_to, id, "", counts, results, status)
 
-
 class FindingSeverity(IntEnum):
     Critical=0
     High=1
@@ -142,7 +139,6 @@ class FindingSeverity(IntEnum):
     
     def __str__(self):
         return '%s' % self.name
-
 
 class FindingParameter(object):
     location:str
@@ -161,7 +157,6 @@ class FindingParameter(object):
         else:
             f.url=""
         return f
-    
 
 class Finding(object):
     def __init__(
@@ -245,4 +240,37 @@ class JobStartResponse(object):
         else:
             return cls(None,data["Message"],False)
 
+class FindingsCompareResultEnum(IntEnum):
+    Same = 0
+    MissingFindings = 1,
+    ExtraFindings = 2,
+    MissingAndExtraFindings = 3
 
+class ScanCompareResultData(object):
+    def __init__ (self, 
+                  compare_result: FindingsCompareResultEnum, 
+                  error_message: str, 
+                  display_text: str
+        ):
+            self.error_message = error_message
+            self.display_text = display_text
+            self.compare_result = compare_result
+
+    @classmethod
+    def from_dict(cls, data:dict):
+        return cls(
+            FindingsCompareResultEnum(data['FindingsComparison']),
+            data['ErrorMessage'], 
+            data['DisplayDetails'])
+
+class OperationResultData(object):
+    def __init__ (self, 
+                  Succeeded: bool, 
+                  Message: str, 
+        ):
+            self.succeeded = Succeeded
+            self.message = Message
+
+    @classmethod
+    def from_dict(cls, data: dict):
+         return cls(**data)

@@ -23,7 +23,6 @@ from venariapi.venari_query import VenariQuery
 from venariapi.venari_query import JobQuery
 from venariapi.venari_query import FindingQuery
 import venariapi.models as models
-from venariapi.models.scan_compare_result_data import ScanCompareResultData
 
 class VenariApi(object):
     def __init__(self, auth, api_url, verify_ssl=True, timeout=60, user_agent=None,
@@ -303,15 +302,34 @@ class VenariApi(object):
         })
         resp=self._request("POST",'/api/job/template/import',json=params)
     
-    def get_scan_compare_data(self, baseline_json:str, comparison_job_uid:str) -> ScanCompareResultData:
+    def get_scan_compare_data(self, baseline_json:str, comparison_job_uid:str) -> models.ScanCompareResultData:
         data = dict({
             "BaselineJSON": baseline_json,
             "ComparisonJobID": comparison_job_uid
         })
         response = self._request("POST",'/api/qa/get/comparison/baseline', json = data)
-        print(data)
         if (response.hasData()):
-            return ScanCompareResultData.from_dict(response.data)
+            return models.ScanCompareResultData.from_dict(response.data)
+
+    def set_job_status(self, job_id:int, status:models.JobStatus):
+        data = dict({
+            "ID": job_id,
+            "Status": int(status),
+        })
+        resp = self._request('POST', endpoint = '/api/analysis/job/status', json = data)
+        return resp.hasData()
+
+    def delete_workspace(self, workspace_id: int) -> models.OperationResultData:
+        data = dict({
+            "ID": workspace_id,
+            "DeleteAttachedAssets": True,
+        })
+        resp = self._request('DELETE', endpoint = '/api/workspace', json = data)
+        if (resp.hasData):
+            return models.OperationResultData.from_dict(resp.data)
+        else:
+            return models.OperationResultData(False, resp.message)
+
     
     def _request(self, method:str, endpoint:str,json:dict=None,params:dict=None):
         requestor=VenariRequestor(self.auth,self.api_url+endpoint,method,verify_ssl=self.verify_ssl)
