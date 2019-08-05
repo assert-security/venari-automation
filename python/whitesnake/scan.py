@@ -8,6 +8,7 @@ import yaml
 import os
 import pathlib
 import json
+import codecs
 
 def get_template(test_def:ScanTestDefinition,template_path)->dict:
     '''
@@ -34,15 +35,23 @@ def get_config():
     return config
     
 def import_templates(config: Configuration):
+    auth = creds.loadCredentials(config.master_node)
+    #we are authenticated at this point.
+    api = VenariApi(auth,config.master_node)
+
     for application in config.tests:
         #test:ScanTestDefinition= next (x for x in config.tests if x.name== 'wavesep concurrent')
         if (application):
             template = get_template(application,"./job-templates")
-            auth = creds.loadCredentials(config.master_node)
-            #we are authenticated at this point.
-            api = VenariApi(auth,config.master_node)
             #Import the job template and remap the template's endpoint/hosts to what's in our test.
             api.import_template(template, application.workspace, application.endpoint)
+            #now import the workflows
+            if(application.workflows):
+                for w in application.workflows:
+                    fullPath=os.path.join(".","job-templates",w)
+                    with codecs.open(fullPath,"r",encoding="utf-8") as workflow_file:
+                        text=workflow_file.read()
+                        api.import_workflow(text,application.workspace)
 
 if __name__ == '__main__':
     config = get_config()

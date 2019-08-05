@@ -13,6 +13,7 @@ import json
 import requests
 import types
 import dpath
+import yaml
 from urllib.parse import urlparse
 
 from venariapi.venari_requestor import VenariRequestor
@@ -272,6 +273,21 @@ class VenariApi(object):
             j=models.JobSummary.from_results(resp.data)
             return j
 
+    def import_workflow(self,workflow_text:str,workspace:str)->bool:
+        #make sure the workflow is valid parsable yaml.
+        yaml.parse(workflow_text,yaml.SafeLoader)
+        #Need to get workspace name.
+        wobj=self.get_workspace_by_name(workspace)
+        params:dict={
+            "WorkflowText":workflow_text,
+            "DBData":{
+                "DBID":wobj.db_data.id,
+                "DBType":wobj.db_data.type
+            }
+        }
+        resp=self._request("POST",'/api/workflow/save',json=params)
+        print(resp.success)
+        return resp.success
     def import_template(self,patch:dict,workspace:str,start_url:str=None):
         '''
         Takes a ScanTestDefintion and changes the start url in the specified job template to match what is in the test.
