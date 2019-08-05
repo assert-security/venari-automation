@@ -11,6 +11,10 @@ import datetime
 class ScanTester(object):
 
     # TODO - single api object and re-connect if needed
+    #      - """ help
+    #      - enforce max time per job
+    #      - integrate new alerts into final analysis of each job
+    #      - consolidate various job disposition tables into one application result class for the values
 
     def __init__ (self, master_node_url):
         self._master_node_url = master_node_url
@@ -33,7 +37,10 @@ class ScanTester(object):
             api = self._connect()
             active_jobs = self.get_active_jobs()
             for job in active_jobs:
-                api.set_job_status(job.id, JobStatus.Paused)
+                if (job.status == JobStatus.Ready):
+                    api.set_job_status(job.id, JobStatus.Cancelled)
+                else:
+                    api.set_job_status(job.id, JobStatus.Paused)
         
             if (len(active_jobs) > 0):
                 start = datetime.datetime.now()
@@ -44,9 +51,10 @@ class ScanTester(object):
                     time.sleep(1)
                     active_job_count = len(self.get_active_jobs())
                     if (active_job_count == 0):
-                        return True
+                        break
+            return True
         except:
-            return False;
+            return False
 
 
     def clear_existing_workspaces(self):
@@ -54,9 +62,7 @@ class ScanTester(object):
             api = self._connect()
             workspaces = api.get_workspaces()
             for workspace in workspaces:
-                result_data = api.delete_workspace(workspace.id)
-                if (not result_data.succeeded):
-                    return False
+                api.delete_workspace(workspace.id)
 
             if (len(workspaces) > 0):
                 start = datetime.datetime.now()
@@ -64,12 +70,18 @@ class ScanTester(object):
                     span = datetime.datetime.now() - start
                     if (span.total_seconds() > 120):
                         return False
-                    time.sleep(1)
+                    time.sleep(3)
                     workspace_count = len(api.get_workspaces())
                     if (workspace_count == 0):
-                        return True
+                        break
+                    else:
+                        workspaces = api.get_workspaces()
+                        for workspace in workspaces:
+                            api.delete_workspace(workspace.id)
+            
+            return True
         except:
-            return False;
+            return False
 
 
     def start_scans(self, config: Configuration) -> (List[JobStartResponse], dict):
@@ -116,8 +128,8 @@ class ScanTester(object):
         api = self._connect()
 
         # enforce start fail limit
+        start_fails = [start for start in starts if (not start.success)]
         if (config.scan_start_fail_limit >= 0):
-            start_fails = [start for start in starts if (not start.success)]
             start_fail_count = len(start_fails)
             if (start_fail_count > config.scan_start_fail_limit):
                 total_seconds = (datetime.datetime.now() - start).total_seconds
@@ -133,8 +145,8 @@ class ScanTester(object):
                     return RegressionResult(total_seconds, error_message, [], [], [])
 
         # enforce site availability fail limit
+        availability_fails = [start for start in starts if (not start.success)]
         if (config.unavailable_app_limit >= 0):
-            availability_fails = [start for start in starts if (not start.success)]
             availability_fail_count = len(availability_fails)
             if (availability_fail_count > config.unavailable_app_limit):
                 total_seconds = (datetime.datetime.now() - start).total_seconds
@@ -145,20 +157,36 @@ class ScanTester(object):
                 
                 return RegressionResult(total_seconds, error_message, [], [], [])
 
-        # build a table of started jobs and a table to store completed job diff results
-        # values are (job, bool) boolean indicates if it has been processed upon completion
+        # build tables and lists to track started jobs, diff results and failed jobs
+        # values are boolean flag that indicates if it has been processed upon completion
         job_table = {} 
+        job_processed_table = {} 
 
-        # values are (job, diff result)
+        # values are diff result
         diffTable = {}
+
+        # values are job ID
+        failedJobs = []
 
         jobs = [start.job for start in starts if(start.job)]
         for job in jobs:
-            job_table[job.id] = (job, False) 
+            job_table[job.id] = job
+            job_processed_table[job.id] = False
             diffTable[job.id] = None
 
         # monitor the jobs in the table until all are complete or other abort conditions are hit
         while (True):
+            # see if all the jobs have landed in a completed or failed state
+            active_jobs = [job for job in jobs if self.is_active_job(job)]
+            waiting = False
+            for job in active_jobs:
+                if (job.id in job_processed_table and not job_processed_table[job.id]):
+                    waiting = True
+                    break
+
+            if (waiting == False):
+                break
+
             jobs = self.get_all_jobs()
             completed_jobs = [job for job in jobs if (job.status == JobStatus.Completed)]
             for job in completed_jobs:
@@ -167,7 +195,16 @@ class ScanTester(object):
                     diff[job.id] = self.process_completed_job(application)
                     job_table[job.id] = True
 
+            failed_jobs = [job for job in jobs if (job.status == JobStatus.Failed)]
+            for job in failed_jobs:
+                if (job.id in job_table and not job_table[job.id]):
+                    failed_jobs.append(job.id)
+                    job_table[job.id] = True
+
             time.sleep(10)
+
+        # build the final result. incorporate passes, completion fails, finding fails, unavailable sites, start fails
+
 
 
     def process_completed_job(self, application: ScanTestDefinition) -> ScanCompareResultData:

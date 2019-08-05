@@ -31,8 +31,7 @@ class ScanTestDefinition(object):
                  template_file:str=None,
                  test_url:str=None,
                  test_url_content_pattern:str=None,
-                 workflows:List[str]=None,
-                 node_count:int=1):
+                 workflows:List[str]=None):
         
         self.name=name
         self.max_missing_findings = max_missing_findings
@@ -43,7 +42,6 @@ class ScanTestDefinition(object):
         self.test_url = test_url
         self.test_url_content_pattern = test_url_content_pattern
         self.workflows=workflows
-        self.node_count = node_count
         self.expected_findings_file = expected_findings_file
 
     @classmethod

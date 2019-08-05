@@ -12,6 +12,9 @@ class JobStatus(IntEnum):
     Paused=3
     Completed=4
     Resume=5
+    Failed=6
+    Cancelled=7
+
 
     def __str__(self):
         return '%s' % self.name

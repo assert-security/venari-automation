@@ -21,14 +21,17 @@ if __name__ == '__main__':
     if (not cleared):
         print("test run abandoned: failed to clear existing workspaces")
 
-    # create templates for configured tests
-    import_templates(config)
+    go = stopped and cleared
 
-    # enqueue all the scan jobs
-    starts, map_job_start_to_config = tester.start_scans(config)
+    if (go):
+        # create templates for configured tests
+        import_templates(config)
 
-    # monitor progress
-    tester.monitor_scans(starts, config, map_job_start_to_config)
+        # enqueue all the scan jobs
+        starts, map_job_start_to_config = tester.start_scans(config)
+
+        # monitor progress
+        tester.monitor_scans(starts, config, map_job_start_to_config)
    
 
 
