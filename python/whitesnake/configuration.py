@@ -31,7 +31,8 @@ class ScanTestDefinition(object):
                  template_file:str=None,
                  test_url:str=None,
                  test_url_content_pattern:str=None,
-                 workflows:List[str]=None):
+                 workflows:List[str]=None,
+                 stack_file:str=None):
         
         self.name=name
         self.max_missing_findings = max_missing_findings
@@ -43,6 +44,7 @@ class ScanTestDefinition(object):
         self.test_url_content_pattern = test_url_content_pattern
         self.workflows=workflows
         self.expected_findings_file = expected_findings_file
+        self.stack_file=stack_file
 
     @classmethod
     def from_json(cls, json_data: dict):

@@ -4,3 +4,4 @@ python/whitesnake/.vs/
 python/venari-client/.vscode/
 python/whitesnake/.vscode/
 .vs/
+python/whitesnake/docker-compose.yml

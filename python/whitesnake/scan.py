@@ -9,6 +9,9 @@ import os
 import pathlib
 import json
 import codecs
+import subprocess
+import click
+from itertools import chain
 
 def get_template(test_def:ScanTestDefinition,template_path)->dict:
     '''
@@ -26,11 +29,11 @@ def get_template(test_def:ScanTestDefinition,template_path)->dict:
         json_data=json.loads(data)
         return json_data
 
-def get_config():
+def get_config(testconfig_path):
     config=None
-    with open(str(Path.home()) + "/.whitesnake.yaml", 'r') as yaml_file:
+    with open(testconfig_path, 'r') as yaml_file:
         json_data = yaml_file.read()
-        config = Configuration.from_json(yaml.load(json_data))
+        config = Configuration.from_json(yaml.load(json_data,Loader=yaml.SafeLoader))
 
     return config
     
@@ -53,7 +56,44 @@ def import_templates(config: Configuration):
                         text=workflow_file.read()
                         api.import_workflow(text,application.workspace)
 
-if __name__ == '__main__':
-    config = get_config()
-    import_templates(config)
+def create_secrets():
+    secret_files=['idp-admin-password','jobnode-client-secret','license.lic','server-ssl-cert.pfx','venari-CA.crt']
+    secret_files=[os.path.join(Path.home(),'assert-security/secrets',x) for x in secret_files]
+    for f in secret_files:
+        sname=os.path.basename(f)
+        if subprocess.run(f"docker secret inspect {sname}",stdout=subprocess.PIPE,stderr=subprocess.PIPE).returncode !=0:
+            proc=subprocess.run(f"docker secret create {sname} {f}")
+    print(secret_files)
 
+def build_stack(config_path:str,tests:List[ScanTestDefinition]):
+    #Take all the stack_files from the tests, plus a few extra, and create docker-compose params to specify each file.
+    #Each file will be specified using a full path.
+    stack_files=[[x.stack_file for x in tests if(x.stack_file)],['local-network.yml','venari-stack.yml'] ]
+    stack_files= [i for i in chain.from_iterable(stack_files)]
+    stack_files=["-f "+os.path.join(config_path,x)  for x in stack_files]
+    #Run the 'config' command so docker-compose will create a single yml file with all of our services/networks etc.
+    stack_files.append('config')
+    args=' '.join(stack_files)
+    args="docker-compose " + args
+    with open("docker-compose.yml",'wb') as cfile:
+        proc=subprocess.run(args,stdout=subprocess.PIPE)
+        if(proc.returncode == 0):
+            cfile.write(proc.stdout)
+        else:
+            print(proc.stdout)
+
+@click.group()
+def cli():
+    pass
+
+@cli.command()
+@click.option('--testconfig',nargs=1,required=True)
+def run(testconfig):
+    create_secrets()
+    config_path=os.path.dirname(testconfig)
+    config = get_config(testconfig)
+    build_stack(config_path,config.tests)
+    subprocess.run("docker stack deploy -c docker-compose.yml whitesnake ")
+
+if __name__ == '__main__':
+    cli()
