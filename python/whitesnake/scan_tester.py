@@ -1,4 +1,4 @@
-from venariapi import VenariAuth, VenariApi
+from venariapi import VenariAuth, VenariApi, VenariAuth
 from venariapi.models import JobStatus, JobStartResponse, Job, Workspace, FindingsCompareResultEnum, ScanCompareResultData
 from scan import Configuration, ScanTestDefinition
 from regression_result import RegressionResult
@@ -7,6 +7,7 @@ import venariapi.examples.credentials as creds
 import site_utils
 import time
 import datetime
+import sys
 
 class ScanTester(object):
 
@@ -16,31 +17,26 @@ class ScanTester(object):
     #      - integrate new alerts into final analysis of each job
     #      - consolidate various job disposition tables into one application result class for the values
 
-    def __init__ (self, master_node_url):
-        self._master_node_url = master_node_url
+    def __init__ (self, config: Configuration):
+        self._config = config
+        self._api = None
 
-
-    def _connect(self):
-        auth = creds.loadCredentials(self._master_node_url)
-        api = VenariApi(auth, self._master_node_url)
-        return api
-
+    def connect(self, auth: VenariAuth):
+        self._api = VenariApi(auth, self._config.master_node)
 
     def is_active_job(self, job:Job):
         ret =  job.status in [JobStatus.Acquired, JobStatus.Ready, JobStatus.Running, JobStatus.Resume]
         return ret
 
-
     def stop_existing_scans(self):
         
         try:
-            api = self._connect()
             active_jobs = self.get_active_jobs()
             for job in active_jobs:
                 if (job.status == JobStatus.Ready):
-                    api.set_job_status(job.id, JobStatus.Cancelled)
+                    self._api.set_job_status(job.id, JobStatus.Cancelled)
                 else:
-                    api.set_job_status(job.id, JobStatus.Paused)
+                    self._api.set_job_status(job.id, JobStatus.Paused)
         
             if (len(active_jobs) > 0):
                 start = datetime.datetime.now()
@@ -56,13 +52,19 @@ class ScanTester(object):
         except:
             return False
 
+    def clear_workspace(self, workspace):
+        result = self._api.delete_workspace(workspace.id)
+        if (not result.succeeded):
+            return False
+
+        return True
+
 
     def clear_existing_workspaces(self):
         try:
-            api = self._connect()
-            workspaces = api.get_workspaces()
+            workspaces = self._api.get_workspaces()
             for workspace in workspaces:
-                api.delete_workspace(workspace.id)
+                self.clear_workspace(workspace)
 
             if (len(workspaces) > 0):
                 start = datetime.datetime.now()
@@ -70,22 +72,23 @@ class ScanTester(object):
                     span = datetime.datetime.now() - start
                     if (span.total_seconds() > 120):
                         return False
-                    time.sleep(3)
-                    workspace_count = len(api.get_workspaces())
+                    workspace_count = len(self._api.get_workspaces())
                     if (workspace_count == 0):
                         break
                     else:
                         workspaces = api.get_workspaces()
                         for workspace in workspaces:
-                            api.delete_workspace(workspace.id)
+                            self.clear_workspace(workspace)
+
+                    time.sleep(3)
             
             return True
         except:
+            type, value, traceback = sys.exc_info()
             return False
 
 
     def start_scans(self, config: Configuration) -> (List[JobStartResponse], dict):
-        api = self._connect()
         starts = []
 
         # create a map of job id to application config
@@ -108,7 +111,7 @@ class ScanTester(object):
 
             # try to start the scan if the site is available
             if (site_available):
-                start_response = api.start_job_fromtemplate(job_name, workspace_name, template_name)
+                start_response = self._api.start_job_fromtemplate(job_name, workspace_name, template_name)
                 if (start_response.error  or start_response.job == None):
                     print(str.format('failed to start job from template {}: {}', template_name, start_response.error))
                 else:
@@ -125,7 +128,6 @@ class ScanTester(object):
     def monitor_scans(self, starts, config: Configuration, map_job_start_to_application) -> RegressionResult:
 
         start = datetime.datetime.now()
-        api = self._connect()
 
         # enforce start fail limit
         start_fails = [start for start in starts if (not start.success)]
@@ -214,14 +216,13 @@ class ScanTester(object):
             json = file.read()
 
         # compare the scan on the server node with the expected json representation
-        compare_result = api.get_scan_compare_data(json, job.uniqueId)
+        compare_result = self._api.get_scan_compare_data(json, job.uniqueId)
         return compare_result
 
 
     def get_all_jobs(self):
-        api = self._connect()
         jobs = []
-        query = api.get_jobs() 
+        query = self._api.get_jobs() 
         query.execute()
         for job in query.items():
             jobs.append(job)
@@ -230,9 +231,8 @@ class ScanTester(object):
 
 
     def get_active_jobs(self):
-        api = self._connect()
         jobs = []
-        query = api.get_jobs() 
+        query = self._api.get_jobs() 
         query.execute()
         for job in query.items():
             jobs.append(job)

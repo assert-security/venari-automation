@@ -1,4 +1,4 @@
-from venariapi import VenariAuth, VenariApi
+from venariapi import VenariAuth, VenariApi, VenariAuth
 from venariapi.models import JobStatus
 import venariapi.examples.credentials as creds
 from scan_tester import ScanTester
@@ -10,7 +10,11 @@ if __name__ == '__main__':
 
     config = get_config()
 
-    tester = ScanTester(config.master_node)
+    tester = ScanTester(config)
+
+    # connect to the master node
+    auth = creds.loadCredentials(config.master_node)
+    tester.connect(auth);
 
     # clean up existing scans and wworkspaces
     stopped = tester.stop_existing_scans()
