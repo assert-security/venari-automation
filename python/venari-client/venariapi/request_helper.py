@@ -79,17 +79,6 @@ class RequestHelper(object):
                 response_code = response.status_code
                 success = True if response_code // 100 == 2 else False
                 data=RequestHelper.__get_json(response)
-
-                text = str.format('[REQUEST] --> {} {}\n', method, endpoint)
-                if (params):
-                    text += str.format('params: {}\n', params)
-                if (json):
-                    text += str.format('json: {}\n', json)
-                text += str.format('[RESPONSE] --> {} success: {}\n', response.status_code, success)
-                if (data):
-                    text += str.format('json: {}\n', data)
-                print(text)
-
                 
                 return VenariResponse(
                     success=success, response_code=response_code, data=data)

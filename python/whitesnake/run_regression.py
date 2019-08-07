@@ -5,12 +5,13 @@ from scan_tester import ScanTester
 import site_utils
 import time
 from scan import *
-
-print(f"hello world from {__name__}")
+from pathlib import Path
 
 if __name__ == '__main__':
 
-    config = get_config()
+
+    home = str(Path.home())
+    config = get_config(f'{home}/.whitesnake.yaml')
 
     tester = ScanTester(config)
 
