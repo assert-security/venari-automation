@@ -268,12 +268,12 @@ class ScanCompareResultData(object):
 
 class OperationResultData(object):
     def __init__ (self, 
-                  Succeeded: bool, 
-                  Message: str, 
+                  succeeded: bool, 
+                  message: str, 
         ):
-            self.succeeded = Succeeded
-            self.message = Message
+            self.succeeded = succeeded
+            self.message = message
 
     @classmethod
     def from_dict(cls, data: dict):
-         return cls(**data)
+        return cls(data['Succeeded'], data['Message'])

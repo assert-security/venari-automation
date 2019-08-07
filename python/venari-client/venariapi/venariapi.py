@@ -14,6 +14,8 @@ import requests
 import types
 import dpath
 import yaml
+import time
+import datetime
 from urllib.parse import urlparse
 
 from venariapi.venari_requestor import VenariRequestor
@@ -341,12 +343,53 @@ class VenariApi(object):
             "DeleteAttachedAssets": True,
         })
         resp = self._request('DELETE', endpoint = '/api/workspace', json = data)
-        if (resp.hasData):
+        if (resp.hasData()):
             return models.OperationResultData.from_dict(resp.data)
         else:
             return models.OperationResultData(False, resp.message)
 
+    def has_running_job(self, job_unique_id: str, assigned_to: str):
+        data = dict({
+            "JobUniqueID": job_unique_id,
+            "AssignedTo": assigned_to,
+        })
+        resp = self._request('POST', endpoint = '/api/job/running', json = data)
+        return resp.data
+
     
+    def force_complete_job(self, job_unique_id: str, assigned_to: str) -> models.OperationResultData:
+        data = dict({
+            "JobUniqueID": job_unique_id,
+            "AssignedTo": assigned_to,
+        })
+        resp = self._request('POST', endpoint = '/api/job/forcecomplete', json = data)
+        if (resp.hasData()):
+            return models.OperationResultData.from_dict(resp.data)
+        elif (resp.success):
+            # TODO - figure out why this is a 204 with no content
+            return models.OperationResultData(True, resp.message)
+
+
+    def wait_for_job_status(self, job_id: int, expected_status: models.JobStatus, max_seconds: int):
+        actual_status = self.get_job_summary(job_id).status
+        if (actual_status == expected_status):
+            return True
+
+        start = datetime.datetime.now()
+        while (actual_status != expected_status):
+            print(str.format('waiting for status: expected {} : current: {}', expected_status, actual_status))
+            span = datetime.datetime.now() - start
+            if (span.total_seconds() > max_seconds):
+                return False
+
+            time.sleep(2)
+            actual_status = self.get_job_summary(job_id).status
+            if (actual_status == expected_status):
+                break
+
+        return True
+
+
     def _request(self, method:str, endpoint:str,json:dict=None,params:dict=None):
         requestor=VenariRequestor(self.auth,self.api_url+endpoint,method,verify_ssl=self.verify_ssl)
         return requestor.request(json,params)

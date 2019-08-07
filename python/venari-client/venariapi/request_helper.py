@@ -26,6 +26,14 @@ class VenariResponse(object):
     def hasData(self):
         return self.response_code==200 and self.data != ""
 
+    def debug_text(self):
+        text = str.format('message: {}\nsuccess: {}\nstatus code: {}\ndata: {}\n', 
+                          self.message, 
+                          str(self.success),
+                          str(self.response_code),
+                          self.data_json(True))
+        return text
+
 class VenariException(Exception):
     def __init__(self,result:VenariResponse):
         super().__init__(result.message)
@@ -65,11 +73,23 @@ class RequestHelper(object):
             response = requests.request(method=method, url=endpoint, params=params, files=files,
                                         headers=headers, json=json, data=data,
                                         verify=RequestHelper.verify_ssl, stream=stream,timeout=RequestHelper.timeout)
+
             try:
                 response.raise_for_status()
                 response_code = response.status_code
                 success = True if response_code // 100 == 2 else False
                 data=RequestHelper.__get_json(response)
+
+                text = str.format('[REQUEST] --> {} {}\n', method, endpoint)
+                if (params):
+                    text += str.format('params: {}\n', params)
+                if (json):
+                    text += str.format('json: {}\n', json)
+                text += str.format('[RESPONSE] --> {} success: {}\n', response.status_code, success)
+                if (data):
+                    text += str.format('json: {}\n', data)
+                print(text)
+
                 
                 return VenariResponse(
                     success=success, response_code=response_code, data=data)

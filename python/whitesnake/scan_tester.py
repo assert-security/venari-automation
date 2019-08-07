@@ -24,33 +24,93 @@ class ScanTester(object):
     def connect(self, auth: VenariAuth):
         self._api = VenariApi(auth, self._config.master_node)
 
-    def is_active_job(self, job:Job):
+    def is_active_job(self, job: Job):
         ret =  job.status in [JobStatus.Acquired, JobStatus.Ready, JobStatus.Running, JobStatus.Resume]
         return ret
 
     def stop_existing_scans(self):
         
-        try:
-            active_jobs = self.get_active_jobs()
-            for job in active_jobs:
-                if (job.status == JobStatus.Ready):
-                    self._api.set_job_status(job.id, JobStatus.Cancelled)
-                else:
-                    self._api.set_job_status(job.id, JobStatus.Paused)
+        start = datetime.datetime.now()
         
-            if (len(active_jobs) > 0):
-                start = datetime.datetime.now()
-                while True:
-                    span = datetime.datetime.now() - start
-                    if (span.total_seconds() > 120):
-                        return False
-                    time.sleep(1)
-                    active_job_count = len(self.get_active_jobs())
-                    if (active_job_count == 0):
-                        break
-            return True
-        except:
+        # move all active jobs into cancelled or paused state
+        active_jobs = self.get_active_jobs()
+        while (len(active_jobs) > 0):
+            span = datetime.datetime.now() - start
+            if (span.total_seconds() > 120):
+                return False
+
+            for job in active_jobs:
+                if (not self.finalize_job(job)):
+                    return False
+
+            active_jobs = self.get_active_jobs()
+
+        # force complete any paused jobs
+        paused_jobs = self.get_jobs_by_status(JobStatus.Paused)
+        all_force_completed = True
+        for job in paused_jobs:
+            has_running_job = True
+            while (has_running_job):
+                has_running_job = self._api.has_running_job(job.uniqueId, job.assignedNode)
+                if (not has_running_job):
+                    break
+
+                time.sleep(5)
+
+            result = self._api.force_complete_job(job.uniqueId, job.assignedNode)
+            if (not result.succeeded):
+                all_force_completed = False
+
+        if (not all_force_completed):
             return False
+
+        active_jobs = self.get_active_jobs()
+        while (len(active_jobs) > 0):
+            span = datetime.datetime.now() - start
+            if (span.total_seconds() > 120):
+                return False
+
+        return True
+
+    def finalize_job(self, job: Job):
+
+        start = datetime.datetime.now()
+        try:
+            if (job.status == JobStatus.Completed or job.status == JobStatus.Failed or job.status == JobStatus.Cancelled):
+                    return True
+        
+            if (job.status == JobStatus.Ready):       
+                self._api.set_job_status(job.id, JobStatus.Cancelled)
+                return True
+
+            if (job.status == JobStatus.Acquired or job.status == JobStatus.Resume or job.status == JobStatus.Running):       
+                self._api.set_job_status(job.id, JobStatus.Paused)
+                if (not self._api.wait_for_job_status(job.id, JobStatus.Paused, 60)):
+                    return False
+                else:
+                    return True
+
+            if (job.status == JobStatus.Paused):       
+
+                # pause status is not a reliable indicator that all job internal processing
+                # is complete so poll for the has_running_job condition until nothing is running`
+                has_running_job = True
+                while (has_running_job):
+                    has_running_job = self._api.has_running_job(job.uniqueId, job.assignedNode)
+                    if (not has_running_job):
+                        break
+                    time.sleep(5)
+
+                try:
+                    return self.try_force_complete(job, 30)
+                except:
+                    type, value, traceback = sys.exc_info()
+                    return False
+
+        finally:
+            span = datetime.datetime.now() - start
+            print(str.format('finalize ran for {} seconds', span.total_seconds()))
+
 
     def clear_workspace(self, workspace):
         result = self._api.delete_workspace(workspace.id)
@@ -84,7 +144,6 @@ class ScanTester(object):
             
             return True
         except:
-            type, value, traceback = sys.exc_info()
             return False
 
 
@@ -206,12 +265,12 @@ class ScanTester(object):
             time.sleep(10)
 
         # build the final result. incorporate passes, completion fails, finding fails, unavailable sites, start fails
-
+        x = 1
 
 
     def process_completed_job(self, application: ScanTestDefinition) -> ScanCompareResultData:
         # get the expected baseline findings
-        path = str.format('./expected-scan-baselines/{}', application.expected_findings_file)
+        path = str.format('../../../IceDrason/Source/Testing/TestData/automated-regression/expected-scan-baselines/{}', application.expected_findings_file)
         with open(path, mode='r') as file:
             json = file.read()
 
@@ -219,8 +278,21 @@ class ScanTester(object):
         compare_result = self._api.get_scan_compare_data(json, job.uniqueId)
         return compare_result
 
+    def get_job_status(self, job_id: int) -> JobStatus:
+        summary = self._api.get_job_summary(job_id)
+        return summary.status
 
-    def get_all_jobs(self):
+    def get_jobs_by_status(self, status: JobStatus) -> List[Job]:
+        jobs = []
+        query = self._api.get_jobs() 
+        query.execute()
+        for job in query.items():
+            jobs.append(job)
+
+        return [job for job in jobs if(job.status == status)]
+
+
+    def get_all_jobs(self) -> List[Job]:
         jobs = []
         query = self._api.get_jobs() 
         query.execute()
@@ -230,7 +302,7 @@ class ScanTester(object):
         return jobs
 
 
-    def get_active_jobs(self):
+    def get_active_jobs(self) -> List[Job]:
         jobs = []
         query = self._api.get_jobs() 
         query.execute()

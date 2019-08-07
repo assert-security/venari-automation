@@ -6,6 +6,8 @@ import site_utils
 import time
 from scan import *
 
+print(f"hello world from {__name__}")
+
 if __name__ == '__main__':
 
     config = get_config()
@@ -21,9 +23,11 @@ if __name__ == '__main__':
     if (not stopped):
         print("test run abandoned: failed to stop pre-existing jobs")
 
-    cleared = tester.clear_existing_workspaces()
-    if (not cleared):
-        print("test run abandoned: failed to clear existing workspaces")
+    cleared = False
+    if (stopped):
+        cleared = tester.clear_existing_workspaces()
+        if (not cleared):
+            print("test run abandoned: failed to clear existing workspaces")
 
     go = stopped and cleared
 
