@@ -9,38 +9,27 @@ from pathlib import Path
 
 if __name__ == '__main__':
 
+    base_test_data_dir = '../../../IceDragon/Source/Testing/automation'
+    config = get_config(f'{base_test_data_dir}/.whitesnake.yaml')
 
-    home = str(Path.home())
-    config = get_config(f'{home}/.whitesnake.yaml')
-
-    tester = ScanTester(config)
+    tester = ScanTester(base_test_data_dir, config)
 
     # connect to the master node
     auth = creds.loadCredentials(config.master_node)
     tester.connect(auth);
-
-    # clean up existing scans and wworkspaces
-    stopped = tester.stop_existing_scans()
-    if (not stopped):
-        print("test run abandoned: failed to stop pre-existing jobs")
-
-    cleared = False
-    if (stopped):
-        cleared = tester.clear_existing_workspaces()
-        if (not cleared):
-            print("test run abandoned: failed to clear existing workspaces")
-
-    go = stopped and cleared
-
+    
+    # initialize the regression pass
+    go = tester.setup_regression()
+    
     if (go):
         # create templates for configured tests
         import_templates(config)
 
-        # enqueue all the scan jobs
-        starts, map_job_start_to_config = tester.start_scans(config)
+        # start/enqueue scan jobs
+        test_items = tester.start_scans(config)
 
         # monitor progress
-        tester.monitor_scans(starts, config, map_job_start_to_config)
+        tester.monitor_scans(test_items, config)
    
 
 

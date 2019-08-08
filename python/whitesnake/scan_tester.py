@@ -8,6 +8,21 @@ import site_utils
 import time
 import datetime
 import sys
+import os.path
+
+
+class TestItemData(object):
+    def __init__ (self, 
+                  scan_start_data: JobStartResponse,
+                  scan_processed: bool = False,
+                  scan_compare_result: ScanCompareResultData = None,
+                  scan_fail: bool = False):
+        self.scan_start_data = scan_start_data
+        self.job = scan_start_data.job
+        self.scan_processed = scan_processed
+        self.scan_compare_result = scan_compare_result
+        self.scan_fail = scan_fail
+
 
 class ScanTester(object):
 
@@ -15,18 +30,42 @@ class ScanTester(object):
     #      - """ help
     #      - enforce max time per job
     #      - integrate new alerts into final analysis of each job
-    #      - consolidate various job disposition tables into one application result class for the values
 
-    def __init__ (self, config: Configuration):
+    def __init__ (self, base_test_data_dir: str, config: Configuration):
+        self._base_test_data_dir = base_test_data_dir
+        self._scan_baseline_dir = f'{self._base_test_data_dir}/exploit-scan-baselines' 
         self._config = config
         self._api = None
+
 
     def connect(self, auth: VenariAuth):
         self._api = VenariApi(auth, self._config.master_node)
 
-    def is_active_job(self, job: Job):
-        ret =  job.status in [JobStatus.Acquired, JobStatus.Ready, JobStatus.Running, JobStatus.Resume]
-        return ret
+
+    # clean up existing scans and workspaces
+    def setup_regression(self):
+
+        # verify data directories exist so we don't get a failure late
+        # in the process after scans run
+        if (not os.path.exists(self._base_test_data_dir)):
+            print(f"test run abandoned: base test data directory '{self._base_test_data_dir}' does not exist")
+            return False
+
+        if (not os.path.exists(self._scan_baseline_dir)):
+            print(f"test run abandoned: base test data directory '{self._scan_baseline_dir}' does not exist")
+            return False
+
+        stopped = self.stop_existing_scans()
+        if (not stopped):
+            print("test run abandoned: failed to stop pre-existing jobs")
+            return False
+
+        cleared = self.clear_existing_workspaces()
+        if (not cleared):
+            print("test run abandoned: failed to clear existing workspaces")
+            return False
+
+        return True
 
     def stop_existing_scans(self):
         
@@ -71,6 +110,7 @@ class ScanTester(object):
                 return False
 
         return True
+
 
     def finalize_job(self, job: Job):
 
@@ -147,11 +187,8 @@ class ScanTester(object):
             return False
 
 
-    def start_scans(self, config: Configuration) -> (List[JobStartResponse], dict):
-        starts = []
-
-        # create a map of job id to application config
-        map_job_start_to_application = {}
+    def start_scans(self, config: Configuration) -> List[TestItemData]:
+        list = []
 
         for application in config.tests:
             # unpack the test details
@@ -173,67 +210,60 @@ class ScanTester(object):
                 start_response = self._api.start_job_fromtemplate(job_name, workspace_name, template_name)
                 if (start_response.error  or start_response.job == None):
                     print(str.format('failed to start job from template {}: {}', template_name, start_response.error))
-                else:
-                    job = start_response.job
-                    map_job_start_to_application[job.id] = application
             else:
-                start_response = JobStartResponse(None, "skipped: site not available", false)
+                start_response = JobStartResponse(None, f"skipped {job_name}: site not available", False)
 
-            starts.append(start_response)
+            test_scan_data = TestItemData(start_response)
+            list.append(test_scan_data)
 
-        return (starts, map_job_start_to_application)
+        return list
 
 
-    def monitor_scans(self, starts, config: Configuration, map_job_start_to_application) -> RegressionResult:
-
-        start = datetime.datetime.now()
+    def monitor_scans(self, tests: List[TestItemData], config: Configuration) -> RegressionResult:
 
         # enforce start fail limit
-        start_fails = [start for start in starts if (not start.success)]
+        start_fails = [test for test in tests if (test.scan_start_data.job and not test.scan_start_data.success)]
         if (config.scan_start_fail_limit >= 0):
             start_fail_count = len(start_fails)
             if (start_fail_count > config.scan_start_fail_limit):
-                total_seconds = (datetime.datetime.now() - start).total_seconds
                 if (start_fail_count > 0):
                     self.stop_existing_scans()
-                    error_message = str.format('Failed to start {} jobs:\n\n', start_fail_count)
+                    error_message = f'Failed to start {start_fail_count} jobs:\n\n'
                     for start_fail in start_fails:
                         if (start_fail.job):
-                            error_message += str.format('\tjob name: {}\n\tassigned node: {}\n', job.name, job.assignedNode)
+                            error_message += f'\tjob name: {start_fail.job.name}\n\tassigned node: {start_fail.job.assignedNode}\n'
                         else:
-                            error_message += str.format('{}\n', start_fail.error)
+                            error_message += f'{start_fail.error}\n'
                 
-                    return RegressionResult(total_seconds, error_message, [], [], [])
+                    return RegressionResult(0, error_message, [], [], [])
 
         # enforce site availability fail limit
-        availability_fails = [start for start in starts if (not start.success)]
+        availability_fails = [test for test in tests if (not test.scan_start_data.job)]
         if (config.unavailable_app_limit >= 0):
             availability_fail_count = len(availability_fails)
             if (availability_fail_count > config.unavailable_app_limit):
-                total_seconds = (datetime.datetime.now() - start).total_seconds
                 self.stop_existing_scans()
-                error_message = str.format('Failed to start {} jobs due to unavailability of test target:\n\n', availability_fail_count)
+                error_message = f'Failed to start {availability_fail_count} jobs due to unavailability of test target:\n\n'
                 for availability_fail in availability_fails:
-                    error_message += str.format('{}\n', availability_fail.error)
+                    error_message += f'{availability_fail.error}\n'
                 
-                return RegressionResult(total_seconds, error_message, [], [], [])
+                return RegressionResult(0, error_message, [], [], [])
 
-        # build tables and lists to track started jobs, diff results and failed jobs
-        # values are boolean flag that indicates if it has been processed upon completion
-        job_table = {} 
-        job_processed_table = {} 
+        # maps job id to test item        
+        test_table = {} 
+        
+        # maps job ids to bool indicating if completed job has been processed
+        job_processed_table = {}
 
-        # values are diff result
-        diffTable = {}
+        # lists ids of failed jobs
+        failed_jobs = []
 
-        # values are job ID
-        failedJobs = []
-
-        jobs = [start.job for start in starts if(start.job)]
-        for job in jobs:
-            job_table[job.id] = job
+        jobs = [test.job for test in tests if test.scan_start_data.success]
+        tests_with_jobs = [test for test in tests if test.scan_start_data.success]
+        for test in tests_with_jobs:
+            job = test.job
             job_processed_table[job.id] = False
-            diffTable[job.id] = None
+            test_table[job.id] = test
 
         # monitor the jobs in the table until all are complete or other abort conditions are hit
         while (True):
@@ -248,29 +278,33 @@ class ScanTester(object):
             if (waiting == False):
                 break
 
-            jobs = self.get_all_jobs()
-            completed_jobs = [job for job in jobs if (job.status == JobStatus.Completed)]
+            completed_jobs = self.get_jobs_by_status(JobStatus.Completed)
             for job in completed_jobs:
                 if (job.id in job_table and not job_table[job.id]):
-                    application = map_job_start_to_application[job.id]
-                    diff[job.id] = self.process_completed_job(application)
-                    job_table[job.id] = True
+                    test = test_table[job.id]
+                    test.scan_processed = True
+                    test.scan_fail = False
+                    test.scan_compare_result = self.process_completed_job(test.application)
+                    job_processed_table[job.id] = True
 
-            failed_jobs = [job for job in jobs if (job.status == JobStatus.Failed)]
+            failed_jobs = self.get_jobs_by_status(JobStatus.Failed)
             for job in failed_jobs:
-                if (job.id in job_table and not job_table[job.id]):
-                    failed_jobs.append(job.id)
-                    job_table[job.id] = True
+                test = test_table[job.id]
+                test.scan_processed = True
+                test.scan_fail = True
+                failed_jobs.append(job.id)
+                job_processed_table[job.id] = True
 
             time.sleep(10)
 
+        report = self.build_report(tests)
+
         # build the final result. incorporate passes, completion fails, finding fails, unavailable sites, start fails
-        x = 1
 
 
     def process_completed_job(self, application: ScanTestDefinition) -> ScanCompareResultData:
         # get the expected baseline findings
-        path = str.format('../../../IceDrason/Source/Testing/TestData/automated-regression/expected-scan-baselines/{}', application.expected_findings_file)
+        path = f'{self._scan_baseline_sir}/{application.expected_findings_file}', 
         with open(path, mode='r') as file:
             json = file.read()
 
@@ -278,9 +312,11 @@ class ScanTester(object):
         compare_result = self._api.get_scan_compare_data(json, job.uniqueId)
         return compare_result
 
+
     def get_job_status(self, job_id: int) -> JobStatus:
         summary = self._api.get_job_summary(job_id)
         return summary.status
+
 
     def get_jobs_by_status(self, status: JobStatus) -> List[Job]:
         jobs = []
@@ -311,5 +347,8 @@ class ScanTester(object):
 
         return [job for job in jobs if(self.is_active_job(job))]
 
+
+    def is_active_job(self, job: Job):
+        return  job.status in [JobStatus.Acquired, JobStatus.Ready, JobStatus.Running, JobStatus.Resume]
 
 
