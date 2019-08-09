@@ -1,7 +1,7 @@
 from venariapi import VenariAuth, VenariApi, VenariAuth
 from venariapi.models import JobStatus, JobStartResponse, Job, Workspace, FindingsCompareResultEnum, ScanCompareResultData
+from models import TestData, TestExecResult, RegressionExecResult
 from scan import Configuration, ScanTestDefinition
-from regression_result import RegressionResult
 from typing import List
 import venariapi.examples.credentials as creds
 import site_utils
@@ -9,20 +9,6 @@ import time
 import datetime
 import sys
 import os.path
-
-
-class TestItemData(object):
-    def __init__ (self, 
-                  scan_start_data: JobStartResponse,
-                  scan_processed: bool = False,
-                  scan_compare_result: ScanCompareResultData = None,
-                  scan_fail: bool = False):
-        self.scan_start_data = scan_start_data
-        self.job = scan_start_data.job
-        self.scan_processed = scan_processed
-        self.scan_compare_result = scan_compare_result
-        self.scan_fail = scan_fail
-
 
 class ScanTester(object):
 
@@ -187,42 +173,49 @@ class ScanTester(object):
             return False
 
 
-    def start_scans(self, config: Configuration) -> List[TestItemData]:
+    def start_scans(self, config: Configuration) -> List[TestData]:
         list = []
 
-        for application in config.tests:
+        for test_definition in config.tests:
             # unpack the test details
-            url = application.endpoint + "/"
-            workspace_name = application.workspace
-            template_name = application.template_name
+            url = test_definition.endpoint + "/"
+            workspace_name = test_definition.workspace
+            template_name = test_definition.template_name
             job_name = str.format('{} {}', workspace_name, template_name)
-            expected_findings_file = application.expected_findings_file
+            expected_findings_file = test_definition.expected_findings_file
 
             # test availability of app to be scanned
-            test_url = application.test_url
-            pattern = application.test_url_content_pattern
+            test_url = test_definition.test_url
+            pattern = test_definition.test_url_content_pattern
             site_available = site_utils.is_site_available(test_url, pattern)
             if (not site_available):
                 print(str.format('failed to start job from template {}: site not available', template_name))
 
             # try to start the scan if the site is available
+            test_exec_result = None
             if (site_available):
                 start_response = self._api.start_job_fromtemplate(job_name, workspace_name, template_name)
                 if (start_response.error  or start_response.job == None):
+                    test_exec_result = TestExecResult.ScanStartFail
                     print(str.format('failed to start job from template {}: {}', template_name, start_response.error))
             else:
-                start_response = JobStartResponse(None, f"skipped {job_name}: site not available", False)
+                test_exec_result = TestExecResult.AppNotAvailable
+                start_response = None
 
-            test_scan_data = TestItemData(start_response)
-            list.append(test_scan_data)
+            test_data = TestData(start_response)
+            test_data.test_exec_result = test_exec_result
+            test_data.test_definition = test_definition
+            list.append(test_data)
 
         return list
 
 
-    def monitor_scans(self, tests: List[TestItemData], config: Configuration) -> RegressionResult:
+    def wait_for_result(self, tests: List[TestData], config: Configuration) -> RegressionExecResult:
+
+        start = datetime.datetime.now()
 
         # enforce start fail limit
-        start_fails = [test for test in tests if (test.scan_start_data.job and not test.scan_start_data.success)]
+        start_fails = [test for test in tests if (test.test_exec_result == TestExecResult.ScanStartFail)]
         if (config.scan_start_fail_limit >= 0):
             start_fail_count = len(start_fails)
             if (start_fail_count > config.scan_start_fail_limit):
@@ -235,10 +228,11 @@ class ScanTester(object):
                         else:
                             error_message += f'{start_fail.error}\n'
                 
-                    return RegressionResult(0, error_message, [], [], [])
+                    span = datetime.datetime.now() - start
+                    return RegressionExecResult(span.total_seconds(), error_message, tests)
 
         # enforce site availability fail limit
-        availability_fails = [test for test in tests if (not test.scan_start_data.job)]
+        availability_fails = [test for test in tests if (test.test_exec_result == TestExecResult.AppNotAvailable)]
         if (config.unavailable_app_limit >= 0):
             availability_fail_count = len(availability_fails)
             if (availability_fail_count > config.unavailable_app_limit):
@@ -247,69 +241,63 @@ class ScanTester(object):
                 for availability_fail in availability_fails:
                     error_message += f'{availability_fail.error}\n'
                 
-                return RegressionResult(0, error_message, [], [], [])
+                    span = datetime.datetime.now() - start
+                    return RegressionExecResult(span.total_seconds(), error_message, tests)
 
         # maps job id to test item        
         test_table = {} 
         
-        # maps job ids to bool indicating if completed job has been processed
-        job_processed_table = {}
-
-        # lists ids of failed jobs
-        failed_jobs = []
-
-        jobs = [test.job for test in tests if test.scan_start_data.success]
-        tests_with_jobs = [test for test in tests if test.scan_start_data.success]
+        jobs = [test.job for test in tests if test.job]
+        tests_with_jobs = [test for test in tests if test.job]
         for test in tests_with_jobs:
-            job = test.job
-            job_processed_table[job.id] = False
-            test_table[job.id] = test
+            test_table[test.job.id] = test
 
         # monitor the jobs in the table until all are complete or other abort conditions are hit
         while (True):
             # see if all the jobs have landed in a completed or failed state
             active_jobs = [job for job in jobs if self.is_active_job(job)]
-            waiting = False
-            for job in active_jobs:
-                if (job.id in job_processed_table and not job_processed_table[job.id]):
-                    waiting = True
-                    break
-
-            if (waiting == False):
+            if (len(active_jobs) == 0):
                 break
 
             completed_jobs = self.get_jobs_by_status(JobStatus.Completed)
             for job in completed_jobs:
-                if (job.id in job_table and not job_table[job.id]):
-                    test = test_table[job.id]
+                test = test_table[job.id]
+                if (not test.scan_processed):
                     test.scan_processed = True
-                    test.scan_fail = False
-                    test.scan_compare_result = self.process_completed_job(test.application)
-                    job_processed_table[job.id] = True
+                    test.test_exec_result = TestExecResult.ScanCompleted
+                    try:
+                        test.scan_compare_result = self.process_completed_test(test)
+                    except:
+                        # TODO - incorporate this in the test data and report
+                        pass
 
             failed_jobs = self.get_jobs_by_status(JobStatus.Failed)
             for job in failed_jobs:
                 test = test_table[job.id]
-                test.scan_processed = True
-                test.scan_fail = True
-                failed_jobs.append(job.id)
-                job_processed_table[job.id] = True
+                if (not test.scan_processed):
+                    test.scan_processed = True
+                    test.test_exec_result = TestExecResult.ScanFail
+
+            # TODO - remove this debug code
+            span = datetime.datetime.now() - start
+            if (span.total_seconds() > 120):
+                self.stop_existing_scans()
 
             time.sleep(10)
 
-        report = self.build_report(tests)
+        span = datetime.datetime.now() - start
+        return RegressionExecResult(span.total_seconds(), error_message, tests)
 
-        # build the final result. incorporate passes, completion fails, finding fails, unavailable sites, start fails
 
 
-    def process_completed_job(self, application: ScanTestDefinition) -> ScanCompareResultData:
+    def process_completed_test(self, test: TestData) -> ScanCompareResultData:
         # get the expected baseline findings
-        path = f'{self._scan_baseline_sir}/{application.expected_findings_file}', 
+        path = f'{self._scan_baseline_dir}/{test.test_definition.expected_findings_file}'
         with open(path, mode='r') as file:
             json = file.read()
 
         # compare the scan on the server node with the expected json representation
-        compare_result = self._api.get_scan_compare_data(json, job.uniqueId)
+        compare_result = self._api.get_scan_compare_data(json, test.job.uniqueId)
         return compare_result
 
 

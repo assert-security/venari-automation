@@ -11,6 +11,7 @@ if __name__ == '__main__':
 
     base_test_data_dir = '../../../IceDragon/Source/Testing/automation'
     config = get_config(f'{base_test_data_dir}/.whitesnake.yaml')
+    # config = get_config(f'{base_test_data_dir}/.quick-regression-loop.yaml')
 
     tester = ScanTester(base_test_data_dir, config)
 
@@ -29,7 +30,10 @@ if __name__ == '__main__':
         test_items = tester.start_scans(config)
 
         # monitor progress
-        tester.monitor_scans(test_items, config)
-   
+        regression_result = tester.wait_for_result(test_items, config)
+
+        # generate report
+        generator = ReportGenerator()
+        report = generate.generate_report(regression_result)
 
 
