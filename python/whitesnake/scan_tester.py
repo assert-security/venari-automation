@@ -17,7 +17,8 @@ class ScanTester(object):
     #      - enforce max time per job
     #      - integrate new alerts into final analysis of each job
     #      - save json exports in case we pick up additional findings above baseline
-    #      - 
+    #      - use logging like in scan.py
+    #      - json output of regression exec result
 
     def __init__ (self, base_test_data_dir: str, config: Configuration):
         self._base_test_data_dir = base_test_data_dir
@@ -215,6 +216,7 @@ class ScanTester(object):
     def wait_for_result(self, tests: List[TestData], config: Configuration) -> RegressionExecResult:
 
         start = datetime.datetime.now()
+        error_message = None
 
         # enforce start fail limit
         start_fails = [test for test in tests if (test.test_exec_result == TestExecResult.ScanStartFail)]
@@ -261,12 +263,14 @@ class ScanTester(object):
             jobs = [job for job in self.get_all_jobs() if (job.id in test_table)]
 
             # see if all the jobs have landed in a completed or failed state
-            active_jobs = self.get_active_jobs()
+            active_jobs = [job for job in self.get_all_jobs() if (job.status not in [JobStatus.Completed, JobStatus.Failed])]
             active_job_count = len(active_jobs)
 
             completed_jobs = [job for job in jobs if (job.status == JobStatus.Completed)]
             for job in completed_jobs:
                 test = test_table[job.id]
+                # replace the initial job property now that we have assigned node info
+                test.job = job
                 if (not test.scan_processed):
                     test.scan_processed = True
                     test.test_exec_result = TestExecResult.ScanCompleted
@@ -279,6 +283,8 @@ class ScanTester(object):
             failed_jobs = [job for job in jobs if (job.status == JobStatus.Failed)]
             for job in failed_jobs:
                 test = test_table[job.id]
+                # replace the initial job property now that we have assigned node info
+                test.job = job
                 if (not test.scan_processed):
                     test.scan_processed = True
                     test.test_exec_result = TestExecResult.ScanFail
@@ -288,9 +294,9 @@ class ScanTester(object):
                 break
 
             # TODO - remove this debug code
-            span = datetime.datetime.now() - start
-            if (span.total_seconds() > 120):
-                self.stop_existing_scans()
+            #span = datetime.datetime.now() - start
+            #if (span.total_seconds() > 240):
+            #    self.stop_existing_scans()
 
             time.sleep(10)
 
@@ -306,7 +312,7 @@ class ScanTester(object):
             json = file.read()
 
         # compare the scan on the server node with the expected json representation
-        compare_result = self._api.get_scan_compare_data(json, test.job.uniqueId)
+        compare_result = self._api.get_scan_compare_data(json, test.job.uniqueId, test.job.assignedNode)
         return compare_result
 
 

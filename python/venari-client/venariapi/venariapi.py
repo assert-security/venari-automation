@@ -320,10 +320,11 @@ class VenariApi(object):
         })
         resp=self._request("POST",'/api/job/template/import',json=params)
     
-    def get_scan_compare_data(self, baseline_json:str, comparison_job_uid:str) -> models.ScanCompareResultData:
+    def get_scan_compare_data(self, baseline_json:str, comparison_job_uid:str, assigned_to: str) -> models.ScanCompareResultData:
         data = dict({
             "BaselineJSON": baseline_json,
-            "ComparisonJobID": comparison_job_uid
+            "ComparisonJobID": comparison_job_uid,
+            "AssignedTo": assigned_to
         })
         response = self._request("POST",'/api/qa/get/comparison/baseline', json = data)
         if (response.hasData()):
