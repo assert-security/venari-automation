@@ -253,18 +253,21 @@ class ScanCompareResultData(object):
     def __init__ (self, 
                   compare_result: FindingsCompareResultEnum, 
                   error_message: str, 
+                  comparison_scan_json: str,
                   display_text: str
         ):
             self.error_message = error_message
             self.display_text = display_text
             self.compare_result = compare_result
+            self.comparison_scan_json = comparison_scan_json
 
     @classmethod
     def from_dict(cls, data:dict):
         return cls(
             FindingsCompareResultEnum(data['FindingsComparison']),
             data['ErrorMessage'], 
-            data['DisplayDetails'])
+            data['DisplayDetails'],
+            data['ComparisonScanJSON'])
 
 class OperationResultData(object):
     def __init__ (self, 

@@ -1,6 +1,6 @@
 {
-    "WorkspaceName": "App Spider",
-    "JobTemplateName": "Authenticated Exploit",
+    "WorkspaceName": "Google Firing Range",
+    "JobTemplateName": "Exploit (3X)",
     "SettingsType": "ExploiterJobSettingsDbObject",
     "SettingsTypeDisplayName": "Exploiter",
     "Patch": [
@@ -21,22 +21,24 @@
             "op": "remove"
         },
         {
+            "path": "/WorkflowSettings/OrderedTrafficWorkflows",
+            "op": "remove"
+        },
+        {
+            "path": "/WorkflowSettings/AutoLoginUserName",
+            "op": "remove"
+        },
+        {
+            "path": "/WorkflowSettings/AutoLoginPassword",
+            "op": "remove"
+        },
+        {
             "path": "/WorkflowSettings/RunSettings/Parameters",
             "op": "remove"
         },
         {
             "path": "/WorkflowSettings/RunSettings/DatasetSettings",
             "op": "remove"
-        },
-        {
-            "value": "testuser",
-            "path": "/WorkflowSettings/AutoLoginUserName",
-            "op": "replace"
-        },
-        {
-            "value": "testpass",
-            "path": "/WorkflowSettings/AutoLoginPassword",
-            "op": "replace"
         },
         {
             "value": [],
@@ -70,7 +72,7 @@
         },
         {
             "value": [
-                "http://www.webscantest.com/login.php"
+                "https://public-firing-range.appspot.com/"
             ],
             "path": "/ResourceScope/SeedResources/StartUrls",
             "op": "replace"
@@ -152,11 +154,6 @@
             "op": "replace"
         },
         {
-            "value": false,
-            "path": "/ResourceScope/IgnoreLoginKeywordUrlsWhenAuthenticated",
-            "op": "replace"
-        },
-        {
             "value": [],
             "path": "/HttpMessageConfig/StateControlData/CustomHeaders",
             "op": "replace"
@@ -171,7 +168,7 @@
                 {
                     "UniqueID": "8d191100-bbe6-4470-852d-fbcffa782684",
                     "DisplayName": null,
-                    "MaxConcurrent": 10,
+                    "MaxConcurrent": "15",
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -832,7 +829,7 @@
                 {
                     "UniqueID": "3428dd35-9b54-4121-a632-4cdbb1e914f6",
                     "DisplayName": null,
-                    "MaxConcurrent": 10,
+                    "MaxConcurrent": "15",
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -848,7 +845,7 @@
                 {
                     "UniqueID": "3d04dd24-2b30-4236-ab0a-a59d0c9e30ce",
                     "DisplayName": null,
-                    "MaxConcurrent": 10,
+                    "MaxConcurrent": "15",
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -914,6 +911,16 @@
                 }
             ],
             "path": "/EnabledModules",
+            "op": "replace"
+        },
+        {
+            "value": true,
+            "path": "/SharedJob",
+            "op": "replace"
+        },
+        {
+            "value": "15",
+            "path": "/MaxConcurrentBrowsersPerProcess",
             "op": "replace"
         }
     ]

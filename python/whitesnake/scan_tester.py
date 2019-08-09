@@ -19,6 +19,10 @@ class ScanTester(object):
     #      - save json exports in case we pick up additional findings above baseline
     #      - use logging like in scan.py
     #      - json output of regression exec result
+    #      - onboard acunetix
+    #      - onboard gruyere with initializer workflow
+    #      - individual pass/fail based on max missing findings
+    #      - talk to chris about separate dir for worflows
 
     def __init__ (self, base_test_data_dir: str, config: Configuration):
         self._base_test_data_dir = base_test_data_dir
@@ -294,9 +298,9 @@ class ScanTester(object):
                 break
 
             # TODO - remove this debug code
-            #span = datetime.datetime.now() - start
-            #if (span.total_seconds() > 240):
-            #    self.stop_existing_scans()
+            span = datetime.datetime.now() - start
+            if (span.total_seconds() > 240):
+                self.stop_existing_scans()
 
             time.sleep(10)
 

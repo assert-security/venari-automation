@@ -1,6 +1,6 @@
 {
-    "WorkspaceName": "Zero",
-    "JobTemplateName": "Authenticated Exploit x5",
+    "WorkspaceName": "WebScanTest",
+    "JobTemplateName": "Authenticated Exploit",
     "SettingsType": "ExploiterJobSettingsDbObject",
     "SettingsTypeDisplayName": "Exploiter",
     "Patch": [
@@ -21,6 +21,10 @@
             "op": "remove"
         },
         {
+            "path": "/WorkflowSettings/OrderedTrafficWorkflows",
+            "op": "remove"
+        },
+        {
             "path": "/WorkflowSettings/RunSettings/Parameters",
             "op": "remove"
         },
@@ -29,12 +33,12 @@
             "op": "remove"
         },
         {
-            "value": "username",
+            "value": "testuser",
             "path": "/WorkflowSettings/AutoLoginUserName",
             "op": "replace"
         },
         {
-            "value": "password",
+            "value": "testpass",
             "path": "/WorkflowSettings/AutoLoginPassword",
             "op": "replace"
         },
@@ -70,7 +74,7 @@
         },
         {
             "value": [
-                "http://zero.webappsecurity.com/"
+                "http://www.webscantest.com/login.php"
             ],
             "path": "/ResourceScope/SeedResources/StartUrls",
             "op": "replace"
@@ -152,6 +156,11 @@
             "op": "replace"
         },
         {
+            "value": false,
+            "path": "/ResourceScope/IgnoreLoginKeywordUrlsWhenAuthenticated",
+            "op": "replace"
+        },
+        {
             "value": [],
             "path": "/HttpMessageConfig/StateControlData/CustomHeaders",
             "op": "replace"
@@ -166,7 +175,7 @@
                 {
                     "UniqueID": "8d191100-bbe6-4470-852d-fbcffa782684",
                     "DisplayName": null,
-                    "MaxConcurrent": "15",
+                    "MaxConcurrent": 10,
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -606,7 +615,7 @@
                         {
                             "Name": "UseLargeRootResourceLists",
                             "DisplayName": "Use Large Root Path Lists",
-                            "Value": "False",
+                            "Value": "True",
                             "DataType": 5,
                             "List": null
                         },
@@ -648,7 +657,7 @@
                         {
                             "Name": "CountryCodes",
                             "DisplayName": "Country Codes (root path)",
-                            "Value": "False",
+                            "Value": "True",
                             "DataType": 5,
                             "List": null
                         },
@@ -827,7 +836,7 @@
                 {
                     "UniqueID": "3428dd35-9b54-4121-a632-4cdbb1e914f6",
                     "DisplayName": null,
-                    "MaxConcurrent": "15",
+                    "MaxConcurrent": 10,
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -843,7 +852,7 @@
                 {
                     "UniqueID": "3d04dd24-2b30-4236-ab0a-a59d0c9e30ce",
                     "DisplayName": null,
-                    "MaxConcurrent": "15",
+                    "MaxConcurrent": 10,
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -914,16 +923,6 @@
         {
             "value": true,
             "path": "/SharedJob",
-            "op": "replace"
-        },
-        {
-            "value": "5",
-            "path": "/MaxSharedNodes",
-            "op": "replace"
-        },
-        {
-            "value": "15",
-            "path": "/MaxConcurrentBrowsersPerProcess",
             "op": "replace"
         }
     ]
