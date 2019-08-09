@@ -42,7 +42,7 @@ setup(
     author_email='chris.szabo@assertsecurity.io',
     license='MIT',
     zip_safe=True,
-    install_requires = ['requests','python-dateutil','dpath', 'requests'],
+    install_requires = ['requests','python-dateutil','dpath', 'requests', 'aiohttp'],
     keywords=['venari', 'api', 'security', 'software', 'dast','whitesnake'],
     classifiers=['Development Status :: 4 - Beta',
                  'Intended Audience :: Developers',

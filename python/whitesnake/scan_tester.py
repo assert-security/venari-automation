@@ -16,6 +16,8 @@ class ScanTester(object):
     #      - """ help
     #      - enforce max time per job
     #      - integrate new alerts into final analysis of each job
+    #      - save json exports in case we pick up additional findings above baseline
+    #      - 
 
     def __init__ (self, base_test_data_dir: str, config: Configuration):
         self._base_test_data_dir = base_test_data_dir
@@ -247,19 +249,22 @@ class ScanTester(object):
         # maps job id to test item        
         test_table = {} 
         
-        jobs = [test.job for test in tests if test.job]
         tests_with_jobs = [test for test in tests if test.job]
         for test in tests_with_jobs:
             test_table[test.job.id] = test
 
         # monitor the jobs in the table until all are complete or other abort conditions are hit
         while (True):
-            # see if all the jobs have landed in a completed or failed state
-            active_jobs = [job for job in jobs if self.is_active_job(job)]
-            if (len(active_jobs) == 0):
-                break
+    
+            # poll for fresh job status (filter by test job ids in case something external started
+            # a job that is not associated with the test run
+            jobs = [job for job in self.get_all_jobs() if (job.id in test_table)]
 
-            completed_jobs = self.get_jobs_by_status(JobStatus.Completed)
+            # see if all the jobs have landed in a completed or failed state
+            active_jobs = self.get_active_jobs()
+            active_job_count = len(active_jobs)
+
+            completed_jobs = [job for job in jobs if (job.status == JobStatus.Completed)]
             for job in completed_jobs:
                 test = test_table[job.id]
                 if (not test.scan_processed):
@@ -271,12 +276,16 @@ class ScanTester(object):
                         # TODO - incorporate this in the test data and report
                         pass
 
-            failed_jobs = self.get_jobs_by_status(JobStatus.Failed)
+            failed_jobs = [job for job in jobs if (job.status == JobStatus.Failed)]
             for job in failed_jobs:
                 test = test_table[job.id]
                 if (not test.scan_processed):
                     test.scan_processed = True
                     test.test_exec_result = TestExecResult.ScanFail
+
+            # break the loop if there are no active jobs
+            if (active_job_count == 0):
+                break
 
             # TODO - remove this debug code
             span = datetime.datetime.now() - start
@@ -324,7 +333,6 @@ class ScanTester(object):
             jobs.append(job)
 
         return jobs
-
 
     def get_active_jobs(self) -> List[Job]:
         jobs = []
