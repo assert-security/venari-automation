@@ -8,25 +8,26 @@ import site_utils
 import time
 import datetime
 import sys
+import os
 import os.path
+import glob
 
 class ScanTester(object):
 
     # TODO - single api object and re-connect if needed
+    #      - add _ to private methods         
     #      - """ help
     #      - enforce max time per job
     #      - integrate new alerts into final analysis of each job
     #      - save json exports in case we pick up additional findings above baseline
     #      - use logging like in scan.py
-    #      - json output of regression exec result
-    #      - onboard acunetix
-    #      - onboard gruyere with initializer workflow
     #      - individual pass/fail based on max missing findings
     #      - talk to chris about separate dir for worflows
 
     def __init__ (self, base_test_data_dir: str, config: Configuration):
         self._base_test_data_dir = base_test_data_dir
         self._scan_baseline_dir = f'{self._base_test_data_dir}/exploit-scan-baselines' 
+        self._scan_export_dir = None
         self._config = config
         self._api = None
 
@@ -48,6 +49,12 @@ class ScanTester(object):
             print(f"test run abandoned: base test data directory '{self._scan_baseline_dir}' does not exist")
             return False
 
+        self._scan_export_dir = f'{os.getcwd()}/scan-exports'.replace('\\', '/')
+        ensure_scan_dir = self.ensure_empty_dir(self._scan_export_dir)
+        if (not ensure_scan_dir):
+            print('failed to ensure empty scan export directory')
+            return False
+
         stopped = self.stop_existing_scans()
         if (not stopped):
             print("test run abandoned: failed to stop pre-existing jobs")
@@ -59,6 +66,22 @@ class ScanTester(object):
             return False
 
         return True
+
+
+    def ensure_empty_dir(self, dir: str):
+        if (not os.path.exists(dir)):
+            os.mkdir(dir)
+            if (not os.path.exists(dir)):
+                return False
+
+        path = f'{dir}/*'
+        files = glob.glob(path)
+        for file in files:
+            os.remove(file)
+
+        files = glob.glob(path)
+        return True if (len(files) == 0) else False
+
 
     def stop_existing_scans(self):
         
@@ -142,7 +165,7 @@ class ScanTester(object):
 
         finally:
             span = datetime.datetime.now() - start
-            print(str.format('finalize ran for {} seconds', span.total_seconds()))
+            print(f'finalize ran for {span.total_seconds()} seconds')
 
 
     def clear_workspace(self, workspace):
@@ -188,7 +211,7 @@ class ScanTester(object):
             url = test_definition.endpoint + "/"
             workspace_name = test_definition.workspace
             template_name = test_definition.template_name
-            job_name = str.format('{} {}', workspace_name, template_name)
+            job_name = f'{workspace_name} {template_name}'
             expected_findings_file = test_definition.expected_findings_file
 
             # test availability of app to be scanned
@@ -196,7 +219,7 @@ class ScanTester(object):
             pattern = test_definition.test_url_content_pattern
             site_available = site_utils.is_site_available(test_url, pattern)
             if (not site_available):
-                print(str.format('failed to start job from template {}: site not available', template_name))
+                print(f'failed to start job from template {template_name}: site not available')
 
             # try to start the scan if the site is available
             test_exec_result = None
@@ -204,7 +227,7 @@ class ScanTester(object):
                 start_response = self._api.start_job_fromtemplate(job_name, workspace_name, template_name)
                 if (start_response.error  or start_response.job == None):
                     test_exec_result = TestExecResult.ScanStartFail
-                    print(str.format('failed to start job from template {}: {}', template_name, start_response.error))
+                    print(f'failed to start job from template {template_name}: {start_response.error}')
             else:
                 test_exec_result = TestExecResult.AppNotAvailable
                 start_response = None
@@ -297,11 +320,6 @@ class ScanTester(object):
             if (active_job_count == 0):
                 break
 
-            # TODO - remove this debug code
-            span = datetime.datetime.now() - start
-            if (span.total_seconds() > 240):
-                self.stop_existing_scans()
-
             time.sleep(10)
 
         span = datetime.datetime.now() - start
@@ -313,10 +331,17 @@ class ScanTester(object):
         # get the expected baseline findings
         path = f'{self._scan_baseline_dir}/{test.test_definition.expected_findings_file}'
         with open(path, mode='r') as file:
-            json = file.read()
+            baseline_json = file.read()
 
         # compare the scan on the server node with the expected json representation
-        compare_result = self._api.get_scan_compare_data(json, test.job.uniqueId, test.job.assignedNode)
+        compare_result = self._api.get_scan_compare_data(baseline_json, test.job.uniqueId, test.job.assignedNode)
+
+        # export the json from the comparison scan
+        scan_json = compare_result.comparison_scan_json.replace('\r\n','\n')
+        file_path = f'{self._scan_export_dir}/{test.test_definition.name}-{str(test.job.uniqueId)}.json'
+        with open(file_path, mode='w+') as outfile:
+            outfile.write(scan_json)
+
         return compare_result
 
 

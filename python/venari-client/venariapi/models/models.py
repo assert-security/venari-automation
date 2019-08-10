@@ -266,8 +266,8 @@ class ScanCompareResultData(object):
         return cls(
             FindingsCompareResultEnum(data['FindingsComparison']),
             data['ErrorMessage'], 
-            data['DisplayDetails'],
-            data['ComparisonScanJSON'])
+            data['ComparisonScanJSON'],
+            data['DisplayDetails'])
 
 class OperationResultData(object):
     def __init__ (self, 
