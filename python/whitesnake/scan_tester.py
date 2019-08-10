@@ -337,10 +337,25 @@ class ScanTester(object):
         compare_result = self._api.get_scan_compare_data(baseline_json, test.job.uniqueId, test.job.assignedNode)
 
         # export the json from the comparison scan
-        scan_json = compare_result.comparison_scan_json.replace('\r\n','\n')
-        file_path = f'{self._scan_export_dir}/{test.test_definition.name}-{str(test.job.uniqueId)}.json'
+        scan_compare_json = compare_result.comparison_scan_json.replace('\r\n','\n')
+        file_base_name = f'{test.test_definition.name}-{str(test.job.uniqueId)}'
+        file_path = f'{self._scan_export_dir}/{file_base_name}.json'
         with open(file_path, mode='w+') as outfile:
-            outfile.write(scan_json)
+            outfile.write(scan_compare_json)
+
+        # export any missing findings as a separate json file
+        if (compare_result.missing_findings_json):
+            missing_findings_json = compare_result.missing_findings_json.replace('\r\n','\n')
+            file_path = f'{self._scan_export_dir}/{file_base_name}-missing-findings.json'
+            with open(file_path, mode='w+') as outfile:
+                outfile.write(missing_findings_json)
+
+        # export any extra findings as a separate json file
+        if (compare_result.extra_findings_json):
+            extra_findings_json = compare_result.extra_findings_json.replace('\r\n','\n')
+            file_path = f'{self._scan_export_dir}/{file_base_name}-extra-findings.json'
+            with open(file_path, mode='w+') as outfile:
+                outfile.write(extra_findings_json)
 
         return compare_result
 

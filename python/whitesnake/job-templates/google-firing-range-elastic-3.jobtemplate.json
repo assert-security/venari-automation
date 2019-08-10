@@ -13,7 +13,11 @@
             "op": "remove"
         },
         {
-            "path": "/WorkflowSettings/InitializerWorkflow",
+            "path": "/WorkflowSettings/SetupWorkflow",
+            "op": "remove"
+        },
+        {
+            "path": "/WorkflowSettings/CleanupWorkflow",
             "op": "remove"
         },
         {
@@ -168,7 +172,7 @@
                 {
                     "UniqueID": "8d191100-bbe6-4470-852d-fbcffa782684",
                     "DisplayName": null,
-                    "MaxConcurrent": "15",
+                    "MaxConcurrent": "20",
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -829,7 +833,7 @@
                 {
                     "UniqueID": "3428dd35-9b54-4121-a632-4cdbb1e914f6",
                     "DisplayName": null,
-                    "MaxConcurrent": "15",
+                    "MaxConcurrent": "20",
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -845,7 +849,7 @@
                 {
                     "UniqueID": "3d04dd24-2b30-4236-ab0a-a59d0c9e30ce",
                     "DisplayName": null,
-                    "MaxConcurrent": "15",
+                    "MaxConcurrent": "20",
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -853,6 +857,20 @@
                     "BalanceWithThreshold": 0,
                     "ConfigItems": null,
                     "ParentModules": null
+                },
+                {
+                    "UniqueID": "acd86f2a-b13a-402f-924f-778a9bdd8a91",
+                    "DisplayName": null,
+                    "MaxConcurrent": 1,
+                    "Isolate": false,
+                    "MaxDurationTicks": null,
+                    "NodeProcessCount": 1,
+                    "BalanceWithModules": null,
+                    "BalanceWithThreshold": 0,
+                    "ConfigItems": null,
+                    "ParentModules": [
+                        "f37ff67a-43c3-4de8-9dda-7b68fb36f047"
+                    ]
                 },
                 {
                     "UniqueID": "f37ff67a-43c3-4de8-9dda-7b68fb36f047",
@@ -894,20 +912,6 @@
                         }
                     ],
                     "ParentModules": null
-                },
-                {
-                    "UniqueID": "acd86f2a-b13a-402f-924f-778a9bdd8a91",
-                    "DisplayName": null,
-                    "MaxConcurrent": 1,
-                    "Isolate": false,
-                    "MaxDurationTicks": null,
-                    "NodeProcessCount": 1,
-                    "BalanceWithModules": null,
-                    "BalanceWithThreshold": 0,
-                    "ConfigItems": null,
-                    "ParentModules": [
-                        "f37ff67a-43c3-4de8-9dda-7b68fb36f047"
-                    ]
                 }
             ],
             "path": "/EnabledModules",
@@ -919,7 +923,7 @@
             "op": "replace"
         },
         {
-            "value": "15",
+            "value": "20",
             "path": "/MaxConcurrentBrowsersPerProcess",
             "op": "replace"
         }
