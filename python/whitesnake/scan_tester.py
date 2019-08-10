@@ -344,14 +344,14 @@ class ScanTester(object):
             outfile.write(scan_compare_json)
 
         # export any missing findings as a separate json file
-        if (compare_result.missing_findings_json):
+        if (compare_result.missing_findings_json and compare_result.missing_findings_json != '[]'):
             missing_findings_json = compare_result.missing_findings_json.replace('\r\n','\n')
             file_path = f'{self._scan_export_dir}/{file_base_name}-missing-findings.json'
             with open(file_path, mode='w+') as outfile:
                 outfile.write(missing_findings_json)
 
         # export any extra findings as a separate json file
-        if (compare_result.extra_findings_json):
+        if (compare_result.extra_findings_json and compare_result.extra_findings_json != '[]'):
             extra_findings_json = compare_result.extra_findings_json.replace('\r\n','\n')
             file_path = f'{self._scan_export_dir}/{file_base_name}-extra-findings.json'
             with open(file_path, mode='w+') as outfile:

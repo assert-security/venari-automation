@@ -1,6 +1,6 @@
 {
     "WorkspaceName": "WebScanTest",
-    "JobTemplateName": "Authenticated Exploit (3X)",
+    "JobTemplateName": "Authenticated Exploit (5X)",
     "SettingsType": "ExploiterJobSettingsDbObject",
     "SettingsTypeDisplayName": "Exploiter",
     "Patch": [
@@ -179,7 +179,7 @@
                 {
                     "UniqueID": "8d191100-bbe6-4470-852d-fbcffa782684",
                     "DisplayName": null,
-                    "MaxConcurrent": "20",
+                    "MaxConcurrent": 20,
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -418,7 +418,7 @@
                 {
                     "UniqueID": "7bc6263c-4059-4c21-be03-94abc77f5757",
                     "DisplayName": null,
-                    "MaxConcurrent": "20",
+                    "MaxConcurrent": 20,
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -685,7 +685,7 @@
                 {
                     "UniqueID": "15b3b634-9606-4c6d-a952-1b3986a7d9b0",
                     "DisplayName": null,
-                    "MaxConcurrent": "35",
+                    "MaxConcurrent": 35,
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -840,7 +840,7 @@
                 {
                     "UniqueID": "3428dd35-9b54-4121-a632-4cdbb1e914f6",
                     "DisplayName": null,
-                    "MaxConcurrent": "20",
+                    "MaxConcurrent": 20,
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -856,7 +856,7 @@
                 {
                     "UniqueID": "3d04dd24-2b30-4236-ab0a-a59d0c9e30ce",
                     "DisplayName": null,
-                    "MaxConcurrent": "20",
+                    "MaxConcurrent": 20,
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -930,7 +930,12 @@
             "op": "replace"
         },
         {
-            "value": "20",
+            "value": "5",
+            "path": "/MaxSharedNodes",
+            "op": "replace"
+        },
+        {
+            "value": 20,
             "path": "/MaxConcurrentBrowsersPerProcess",
             "op": "replace"
         }
