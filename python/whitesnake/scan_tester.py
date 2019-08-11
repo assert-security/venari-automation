@@ -305,7 +305,8 @@ class ScanTester(object):
                         test.scan_compare_result = self.process_completed_test(test)
                     except:
                         # TODO - incorporate this in the test data and report
-                        pass
+                        type, value, traceback = sys.exc_info()
+                        test.job = test.job
 
             failed_jobs = [job for job in jobs if (job.status == JobStatus.Failed)]
             for job in failed_jobs:

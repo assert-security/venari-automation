@@ -866,20 +866,6 @@
                     "ParentModules": null
                 },
                 {
-                    "UniqueID": "acd86f2a-b13a-402f-924f-778a9bdd8a91",
-                    "DisplayName": null,
-                    "MaxConcurrent": 1,
-                    "Isolate": false,
-                    "MaxDurationTicks": null,
-                    "NodeProcessCount": 1,
-                    "BalanceWithModules": null,
-                    "BalanceWithThreshold": 0,
-                    "ConfigItems": null,
-                    "ParentModules": [
-                        "f37ff67a-43c3-4de8-9dda-7b68fb36f047"
-                    ]
-                },
-                {
                     "UniqueID": "f37ff67a-43c3-4de8-9dda-7b68fb36f047",
                     "DisplayName": null,
                     "MaxConcurrent": 1,
@@ -919,6 +905,20 @@
                         }
                     ],
                     "ParentModules": null
+                },
+                {
+                    "UniqueID": "acd86f2a-b13a-402f-924f-778a9bdd8a91",
+                    "DisplayName": null,
+                    "MaxConcurrent": 1,
+                    "Isolate": false,
+                    "MaxDurationTicks": null,
+                    "NodeProcessCount": 1,
+                    "BalanceWithModules": null,
+                    "BalanceWithThreshold": 0,
+                    "ConfigItems": null,
+                    "ParentModules": [
+                        "f37ff67a-43c3-4de8-9dda-7b68fb36f047"
+                    ]
                 }
             ],
             "path": "/EnabledModules",
@@ -930,7 +930,7 @@
             "op": "replace"
         },
         {
-            "value": "5",
+            "value": "4",
             "path": "/MaxSharedNodes",
             "op": "replace"
         },
