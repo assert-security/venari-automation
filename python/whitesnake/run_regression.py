@@ -11,8 +11,8 @@ from pathlib import Path
 if __name__ == '__main__':
 
     base_test_data_dir = '../../../IceDragon/Source/Testing/automation'
-    #config = get_config(f'{base_test_data_dir}/.whitesnake.yaml')
-    config = get_config(f'{base_test_data_dir}/.quick-regression-loop.yaml')
+    config = get_config(f'{base_test_data_dir}/.whitesnake.yaml')
+    #config = get_config(f'{base_test_data_dir}/.quick-regression-loop.yaml')
 
     tester = ScanTester(base_test_data_dir, config)
 

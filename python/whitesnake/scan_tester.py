@@ -23,6 +23,7 @@ class ScanTester(object):
     #      - use logging like in scan.py
     #      - individual pass/fail based on max missing findings
     #      - talk to chris about separate dir for worflows
+    #      - kill scriptengine processes @ end
 
     def __init__ (self, base_test_data_dir: str, config: Configuration):
         self._base_test_data_dir = base_test_data_dir
