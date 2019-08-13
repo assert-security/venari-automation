@@ -6,7 +6,7 @@ from typing import List
 class TestExecResult(IntEnum):
     AppNotAvailable = 0,
     ScanStartFail = 1,
-    ScanFail = 2,
+    ScanExecuteFail = 2,
     ScanCompleted = 3
 
 

@@ -5,3 +5,5 @@ python/venari-client/.vscode/
 python/whitesnake/.vscode/
 .vs/
 python/whitesnake/docker-compose.yml
+python/whitesnake/reports/
+python/whitesnake/scan-exports/

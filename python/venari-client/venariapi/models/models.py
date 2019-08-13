@@ -256,14 +256,18 @@ class ScanCompareResultData(object):
                   comparison_scan_json: str,
                   missing_findings_json: str,
                   extra_findings_json: str,
+                  missing_findings_count: int,
+                  extra_findings_count: int,
                   display_text: str
         ):
-            self.error_message = error_message
-            self.display_text = display_text
             self.compare_result = compare_result
+            self.error_message = error_message
             self.comparison_scan_json = comparison_scan_json
             self.missing_findings_json = missing_findings_json
             self.extra_findings_json = extra_findings_json
+            self.missing_findings_count = missing_findings_count
+            self.extra_findings_count = extra_findings_count
+            self.display_text = display_text
 
     @classmethod
     def from_dict(cls, data:dict):
@@ -273,6 +277,8 @@ class ScanCompareResultData(object):
                                       data['ComparisonScanJSON'],
                                       data['MissingFindingsJSON'],
                                       data['ExtraFindingsJSON'],
+                                      int(data['MissingFindingsCount']),
+                                      int(data['ExtraFindingsCount']),
                                       data['DisplayDetails'])
 
 class OperationResultData(object):

@@ -5,6 +5,7 @@ from scan import Configuration, ScanTestDefinition
 from typing import List
 import venariapi.examples.credentials as creds
 import site_utils
+import file_utils
 import time
 import datetime
 import sys
@@ -51,7 +52,7 @@ class ScanTester(object):
             return False
 
         self._scan_export_dir = f'{os.getcwd()}/scan-exports'.replace('\\', '/')
-        ensure_scan_dir = self.ensure_empty_dir(self._scan_export_dir)
+        ensure_scan_dir = file_utils.ensure_empty_dir(self._scan_export_dir)
         if (not ensure_scan_dir):
             print('failed to ensure empty scan export directory')
             return False
@@ -67,21 +68,6 @@ class ScanTester(object):
             return False
 
         return True
-
-
-    def ensure_empty_dir(self, dir: str):
-        if (not os.path.exists(dir)):
-            os.mkdir(dir)
-            if (not os.path.exists(dir)):
-                return False
-
-        path = f'{dir}/*'
-        files = glob.glob(path)
-        for file in files:
-            os.remove(file)
-
-        files = glob.glob(path)
-        return True if (len(files) == 0) else False
 
 
     def stop_existing_scans(self):
@@ -316,7 +302,7 @@ class ScanTester(object):
                 test.job = job
                 if (not test.scan_processed):
                     test.scan_processed = True
-                    test.test_exec_result = TestExecResult.ScanFail
+                    test.test_exec_result = TestExecResult.ScanExecuteFail
 
             # break the loop if there are no active jobs
             if (active_job_count == 0):
@@ -328,8 +314,8 @@ class ScanTester(object):
         return RegressionExecResult(span.total_seconds(), error_message, tests)
 
 
-
     def process_completed_test(self, test: TestData) -> ScanCompareResultData:
+
         # get the expected baseline findings
         path = f'{self._scan_baseline_dir}/{test.test_definition.expected_findings_file}'
         with open(path, mode='r') as file:
@@ -338,9 +324,12 @@ class ScanTester(object):
         # compare the scan on the server node with the expected json representation
         compare_result = self._api.get_scan_compare_data(baseline_json, test.job.uniqueId, test.job.assignedNode)
 
-        # export the json from the comparison scan
-        scan_compare_json = compare_result.comparison_scan_json.replace('\r\n','\n')
         file_base_name = f'{test.test_definition.name}-{str(test.job.uniqueId)}'
+
+        # export the json from the comparison scan
+        scan_compare_json = "no comparison json"
+        if (compare_result.comparison_scan_json):
+            scan_compare_json = compare_result.comparison_scan_json.replace('\r\n','\n')
         file_path = f'{self._scan_export_dir}/{file_base_name}.json'
         with open(file_path, mode='w+') as outfile:
             outfile.write(scan_compare_json)
@@ -386,6 +375,7 @@ class ScanTester(object):
 
         return jobs
 
+
     def get_active_jobs(self) -> List[Job]:
         jobs = []
         query = self._api.get_jobs() 
@@ -398,5 +388,11 @@ class ScanTester(object):
 
     def is_active_job(self, job: Job):
         return  job.status in [JobStatus.Acquired, JobStatus.Ready, JobStatus.Running, JobStatus.Resume]
+
+
+
+
+
+
 
 
