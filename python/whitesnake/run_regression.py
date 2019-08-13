@@ -16,18 +16,6 @@ if __name__ == '__main__':
     config = get_config(f'{base_test_data_dir}/.whitesnake.yaml')
     #config = get_config(f'{base_test_data_dir}/.quick-regression-loop.yaml')
 
-    report = 'yadda yadda'
-    output_dir = f'{os.getcwd()}/reports'.replace('\\', '/')
-    ensure_output_dir = file_utils.ensure_empty_dir(output_dir)
-    if (not ensure_output_dir):
-        print('failed to ensure empty output directory')
-    else:
-        dt_text = datetime.datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
-        file_path = f'{output_dir}/scan-compare-report-{dt_text}.txt'
-        with open(file_path, mode='w+') as outfile:
-            outfile.write(report)
-
-
     tester = ScanTester(base_test_data_dir, config)
 
     # connect to the master node
@@ -54,8 +42,8 @@ if __name__ == '__main__':
 
         # write the report as a text file
         output_dir = f'{os.getcwd()}/reports'.replace('\\', '/')
-        ensure_output_dir = ensure_empty_dir(output_dir)
-        if (not ensure_scan_dir):
+        ensure_output_dir = file_utils.ensure_empty_dir(output_dir)
+        if (not ensure_output_dir):
             print('failed to ensure empty output directory')
         else:
             dt_text = datetime.datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
