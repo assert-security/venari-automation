@@ -40,7 +40,7 @@ class ReportGenerator(object):
             report += f'SKIPPED: {test_skip_count}\n\n'
 
             for test in regression_result.tests:
-                report = '********************************************************************************\n'
+                report += '********************************************************************************\n'
                 report += f'TARGET:              {test.test_definition.name} ({test.test_definition.template_name})\n'
                 report += f'NODE:                {test.scan_start_data.job.assignedNode}\n'
                 report += f'MAX MISSING:         {test.test_definition.max_missing_findings}\n'
@@ -48,8 +48,9 @@ class ReportGenerator(object):
                     report += f'DURATION:            {test.scan_start_data.job.duration}\n\n'
 
                 report += f'BASELINE COMPARISON: {str(test.scan_compare_result.compare_result)}\n'
-                report = '********************************************************************************\n\n'
-                report += f'{test.scan_compare_result.display_text}\n'
+                report += '********************************************************************************\n\n'
+                display_text = test.scan_compare_result.display_text.replace('\r\n','\n')
+                report += f'{display_text}\n'
 
         return report
 
