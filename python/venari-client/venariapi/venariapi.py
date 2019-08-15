@@ -17,7 +17,6 @@ import yaml
 import time
 import datetime
 from urllib.parse import urlparse
-
 from venariapi.venari_requestor import VenariRequestor
 from venariapi.venari_auth import VenariAuth,IdpInfo,RequestHelper
 import argparse
@@ -44,11 +43,13 @@ class VenariApi(object):
         if not self.verify_ssl:
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+
     @staticmethod
     def get_idp_info(api_url:str)->IdpInfo:
         url:str=api_url+'/api/auth/idpInfo'
         response=RequestHelper.request('GET',url)
         return IdpInfo(response.data)
+
 
     @staticmethod
     def get_token_endpoint(authorityUrl:str):
@@ -61,6 +62,7 @@ class VenariApi(object):
         response=RequestHelper.request('GET',url)
         return response.data["token_endpoint"]
     
+
     def get_workspace_by_name(self,workspaceName)->models.Workspace:
         endpoint='/api/workspace'
         data=dict({
@@ -70,11 +72,13 @@ class VenariApi(object):
         if(result.hasData()):
            return models.Workspace.from_data(result.data)
 
+
     def get_workspaces(self):
         endpoint='/api/workspace/summaries'
         result=self._request('GET',endpoint)
         if(result.hasData()):
             return [models.Workspace.from_data(i) for i in result.data]
+
 
     def get_jobs_for_workspace(self,Id)->JobQuery:
         json_data = dict({
@@ -85,6 +89,7 @@ class VenariApi(object):
         r=VenariRequestor(self.auth,self.api_url+endpoint,'POST',verify_ssl=self.verify_ssl)
         return JobQuery(r,json_data)
 
+
     def get_jobs(self)->JobQuery:
         json_data=dict({
             "SortDescending": True,
@@ -93,6 +98,7 @@ class VenariApi(object):
         endpoint=self.api_url+'/api/jobs'
         r=VenariRequestor(self.auth,endpoint,'POST',verify_ssl=self.verify_ssl)
         return JobQuery(r,json_data)
+
 
     def get_findings_for_workspace(self,dbdata:models.DBData)->VenariQuery:
         """
@@ -111,6 +117,7 @@ class VenariApi(object):
         endpoint = self.api_url+'/api/findings/get'
         r=VenariRequestor(self.auth,endpoint,'POST',verify_ssl=self.verify_ssl)
         return FindingQuery(r,json_data)
+
 
     def get_findings_for_job(self,jobUniqueID)->VenariQuery:
         """
@@ -150,6 +157,7 @@ class VenariApi(object):
         r=VenariRequestor(self.auth,endpoint,'POST',verify_ssl=self.verify_ssl)
         return FindingQuery(r,json_data)
 
+
     def get_templates_for_workspace(self,db:models.DBData):
         json_data=dict({
             "DBID":db.id,
@@ -162,6 +170,7 @@ class VenariApi(object):
         if(resp.hasData()):
             templates=[models.JobTemplate.from_data(x) for x in resp.data ]
             return templates
+
 
     def start_job_fromtemplate(self,job_name,workspace_name,template_name)->models.JobStartResponse:
         """
@@ -209,6 +218,7 @@ class VenariApi(object):
         if(resp.hasData()):
             return models.JobStartResponse.from_data(resp.data)
     
+
     def get_job_summary(self,jobId:int)->models.JobSummary:
         """
         Get summary information about a job.
@@ -275,6 +285,7 @@ class VenariApi(object):
             j=models.JobSummary.from_results(resp.data)
             return j
 
+
     def import_workflow(self,workflow_text:str,workspace:str)->bool:
         #make sure the workflow is valid parsable yaml.
         yaml.parse(workflow_text,yaml.SafeLoader)
@@ -290,6 +301,8 @@ class VenariApi(object):
         resp=self._request("POST",'/api/workflow/save',json=params)
         print(resp.success)
         return resp.success
+    
+
     def import_template(self,patch:dict,workspace:str,start_url:str=None):
         '''
         Takes a ScanTestDefintion and changes the start url in the specified job template to match what is in the test.
@@ -320,15 +333,26 @@ class VenariApi(object):
         })
         resp=self._request("POST",'/api/job/template/import',json=params)
     
-    def get_scan_compare_data(self, baseline_json:str, comparison_job_uid:str, assigned_to: str) -> models.ScanCompareResultData:
+
+    def get_scan_compare_summary_data(self, baseline_json:str, comparison_job_uid:str, assigned_to: str) -> models.FindingsSummaryCompareData:
         data = dict({
             "BaselineJSON": baseline_json,
             "ComparisonJobID": comparison_job_uid,
             "AssignedTo": assigned_to
         })
-        response = self._request("POST",'/api/qa/get/comparison/baseline', json = data)
+        response = self._request("POST",'/api/qa/get/findings/summary/comparison/baseline', json = data)
         if (response.hasData()):
-            return models.ScanCompareResultData.from_dict(response.data)
+            return models.FindingsSummaryCompareData.from_dict(response.data)
+
+
+    def get_scan_compare_detail_data(self, comparison_job_uid:str) -> models.FindingsDetailCompareData:
+        data = dict({
+            "ComparisonJobID": comparison_job_uid,
+        })
+        response = self._request("POST",'/api/qa/get/findings/detail/comparison/baseline', json = data)
+        if (response.hasData()):
+            return models.FindingsDetailCompareData.from_dict(response.data)
+
 
     def set_job_status(self, job_id:int, status:models.JobStatus):
         data = dict({
@@ -337,6 +361,7 @@ class VenariApi(object):
         })
         resp = self._request('POST', endpoint = '/api/analysis/job/status', json = data)
         return resp.hasData()
+
 
     def delete_workspace(self, workspace_id: int) -> models.OperationResultData:
         data = dict({
@@ -348,6 +373,7 @@ class VenariApi(object):
             return models.OperationResultData.from_dict(resp.data)
         else:
             return models.OperationResultData(False, resp.message)
+
 
     def has_running_job(self, job_unique_id: str, assigned_to: str):
         data = dict({
@@ -394,6 +420,7 @@ class VenariApi(object):
     def _request(self, method:str, endpoint:str,json:dict=None,params:dict=None):
         requestor=VenariRequestor(self.auth,self.api_url+endpoint,method,verify_ssl=self.verify_ssl)
         return requestor.request(json,params)
+
 
     def _fixup_jobtemplate(self,template_patch:dict,new_baseurl)->dict:
         endpoint=urlparse(new_baseurl)

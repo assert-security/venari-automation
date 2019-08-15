@@ -1,5 +1,5 @@
 from venariapi import VenariAuth, VenariApi, VenariAuth
-from venariapi.models import JobStatus, JobStartResponse, Job, Workspace, FindingsCompareResultEnum, ScanCompareResultData
+from venariapi.models import JobStatus, JobStartResponse, Job, Workspace, FindingsCompareResultEnum, FindingsSummaryCompareData, FindingsDetailCompareData
 from models import TestData, TestExecResult, RegressionExecResult
 from scan import Configuration, ScanTestDefinition
 from typing import List
@@ -15,15 +15,11 @@ import glob
 
 class ScanTester(object):
 
-    # TODO - single api object and re-connect if needed
+    # TODO 
     #      - add _ to private methods         
     #      - """ help
     #      - enforce max time per job
     #      - integrate new alerts into final analysis of each job
-    #      - save json exports in case we pick up additional findings above baseline
-    #      - use logging like in scan.py
-    #      - individual pass/fail based on max missing findings
-    #      - talk to chris about separate dir for worflows
     #      - kill scriptengine processes @ end
 
     def __init__ (self, base_test_data_dir: str, config: Configuration):
@@ -289,7 +285,7 @@ class ScanTester(object):
                     test.scan_processed = True
                     test.test_exec_result = TestExecResult.ScanCompleted
                     try:
-                        test.scan_compare_result = self.process_completed_test(test)
+                        test.scan_compare_summary_result = self.process_completed_test(test)
                     except:
                         # TODO - incorporate this in the test data and report
                         type, value, traceback = sys.exc_info()
@@ -314,7 +310,13 @@ class ScanTester(object):
         return RegressionExecResult(span.total_seconds(), error_message, tests)
 
 
-    def process_completed_test(self, test: TestData) -> ScanCompareResultData:
+    def process_completed_test(self, test: TestData) -> FindingsSummaryCompareData:
+        
+        #TODO - replace or augment summary method with detail method when complete
+
+        return self.get_summary_compare_result(test);
+
+    def get_summary_compare_result(self, test: TestData) -> FindingsSummaryCompareData:
 
         # get the expected baseline findings
         path = f'{self._scan_baseline_dir}/{test.test_definition.expected_findings_file}'
@@ -322,7 +324,7 @@ class ScanTester(object):
             baseline_json = file.read()
 
         # compare the scan on the server node with the expected json representation
-        compare_result = self._api.get_scan_compare_data(baseline_json, test.job.uniqueId, test.job.assignedNode)
+        compare_result = self._api.get_scan_compare_summary_data(baseline_json, test.job.uniqueId, test.job.assignedNode)
 
         file_base_name = f'{test.test_definition.name}-{str(test.job.uniqueId)}'
 
@@ -349,7 +351,6 @@ class ScanTester(object):
                 outfile.write(extra_findings_json)
 
         return compare_result
-
 
     def get_job_status(self, job_id: int) -> JobStatus:
         summary = self._api.get_job_summary(job_id)

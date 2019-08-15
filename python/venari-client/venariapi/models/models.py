@@ -249,7 +249,7 @@ class FindingsCompareResultEnum(IntEnum):
     ExtraFindings = 2,
     MissingAndExtraFindings = 3
 
-class ScanCompareResultData(object):
+class FindingsSummaryCompareData(object):
     def __init__ (self, 
                   compare_result: FindingsCompareResultEnum, 
                   error_message: str, 
@@ -280,6 +280,38 @@ class ScanCompareResultData(object):
                                       int(data['MissingFindingsCount']),
                                       int(data['ExtraFindingsCount']),
                                       data['DisplayDetails'])
+
+
+class FindingsDetailCompareData(object):
+    def __init__ (self, 
+                  compare_result: FindingsCompareResultEnum, 
+                  error_message: str, 
+                  workspace_id: str,
+                  download_file_id: str,
+                  missing_findings_count: int,
+                  extra_findings_count: int,
+                  display_text: str
+        ):
+            self.compare_result = compare_result
+            self.error_message = error_message
+            self.workspace_id = workspace_id
+            self.download_file_id = download_file_id
+            self.missing_findings_count = missing_findings_count
+            self.extra_findings_count = extra_findings_count
+            self.display_text = display_text
+
+    @classmethod
+    def from_dict(cls, data:dict):
+        return cls(
+            FindingsCompareResultEnum(data['FindingsComparison']),
+                                      data['ErrorMessage'], 
+                                      data['WorkspaceID'], 
+                                      data['DownloadFileID'], 
+                                      int(data['MissingFindingsCount']),
+                                      int(data['ExtraFindingsCount']),
+                                      data['DisplayDetails'])
+
+
 
 class OperationResultData(object):
     def __init__ (self, 
