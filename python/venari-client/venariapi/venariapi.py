@@ -9,7 +9,7 @@ __license__ = "MIT"
 __since__ = "0.0.1"
 
 import urllib3
-import json
+import json 
 import requests
 import types
 import dpath
@@ -25,6 +25,8 @@ from venariapi.venari_query import VenariQuery
 from venariapi.venari_query import JobQuery
 from venariapi.venari_query import FindingQuery
 import venariapi.models as models
+import base64
+import os
 
 class VenariApi(object):
     def __init__(self, auth, api_url, verify_ssl=True, timeout=60, user_agent=None,
@@ -334,26 +336,6 @@ class VenariApi(object):
         resp=self._request("POST",'/api/job/template/import',json=params)
     
 
-    def get_scan_compare_summary_data(self, baseline_json:str, comparison_job_uid:str, assigned_to: str) -> models.FindingsSummaryCompareData:
-        data = dict({
-            "BaselineJSON": baseline_json,
-            "ComparisonJobID": comparison_job_uid,
-            "AssignedTo": assigned_to
-        })
-        response = self._request("POST",'/api/qa/get/findings/summary/comparison/baseline', json = data)
-        if (response.hasData()):
-            return models.FindingsSummaryCompareData.from_dict(response.data)
-
-
-    def get_scan_compare_detail_data(self, comparison_job_uid:str) -> models.FindingsDetailCompareData:
-        data = dict({
-            "ComparisonJobID": comparison_job_uid,
-        })
-        response = self._request("POST",'/api/qa/get/findings/detail/comparison/baseline', json = data)
-        if (response.hasData()):
-            return models.FindingsDetailCompareData.from_dict(response.data)
-
-
     def set_job_status(self, job_id:int, status:models.JobStatus):
         data = dict({
             "ID": job_id,
@@ -392,9 +374,6 @@ class VenariApi(object):
         resp = self._request('POST', endpoint = '/api/job/forcecomplete', json = data)
         if (resp.hasData()):
             return models.OperationResultData.from_dict(resp.data)
-        elif (resp.success):
-            # TODO - figure out why this is a 204 with no content
-            return models.OperationResultData(True, resp.message)
 
 
     def wait_for_job_status(self, job_id: int, expected_status: models.JobStatus, max_seconds: int):
@@ -440,4 +419,95 @@ class VenariApi(object):
         newdata=patch.replace(existing_baseurl,new_baseurl)
         new_json=json.loads(newdata)
         return new_json
+
+    def base64(self, bytes):
+        return base64.b64encode(bytes)
+
+    def create_upload_stream(self, file: str, note: str, expected_hash_hex: str) -> str:
+        data = dict({
+            "FileName": os.path.basename(file),
+            "Note": note,
+            "ExpectedHashHex": expected_hash_hex
+        })
+        response = self._request("POST",'/api/resources/file/upload/create', json = data)
+        if (response.hasData()):
+            return response.data
+
+    def upload_file_part(self, file_id: str, index: int, bytes, expected_hash_hex: str) -> str:
+        data = dict({
+            "FileID": file_id,
+            "Index": index,
+            "Bytes": self.base64(bytes),
+            "ExpectedHashHex": expected_hash_hex
+        })
+        response = self._request("PUT",'/api/resources/file/upload/part', json = data)
+        if (response.hasData()):
+            return models.OperationResultData.from_dict(response.data)
+
+
+    def close_upload_stream(self, file_id: str) -> models.OperationResultData:
+        response = self._request("PUT", f'/api/resources/file/upload/close/{file_id}')
+        if (response.hasData()):
+            return models.OperationResultData.from_dict(response.data)
+
+
+    def create_download_stream(self, file_id: str, note: str, part_size: int) -> models.DownloadStreamData:
+        data = dict({
+            "FileID": file_id,
+            "Note": note,
+            "PartSize": part_size
+        })
+        response = self._request("POST",'/api/resources/file/download/create', json = data)
+        if (response.hasData()):
+            return models.DownloadStreamData.from_dict(response.data)
+
+
+    def download_file_part(self, file_id: str, index: int) -> models.DownloadFilePartData:
+        data = dict({
+            "FileID": file_id,
+            "PartIndex": index,
+        })
+        response = self._request("PUT",'/api/resources/file/download/part', json = data)
+        if (response.hasData()):
+            return models.DownloadFilePartData.from_dict(response.data)
+
+
+    def close_download_stream(self, file_id: str, discard_entry: bool, delete_file: bool, delete_directory: bool) -> models.OperationResultData:
+        data = dict({
+            "FileID": file_id,
+            "DiscardEntry": discard_entry,
+            "DeleteFile": delete_file,
+            "DeleteDirectory": delete_directory
+        })
+        response = self._request("PUT", f'/api/resources/file/download/close', json = data)
+        if (response.hasData()):
+            return models.OperationResultData.from_dict(response.data)
+
+
+
+    def get_scan_compare_summary_data(self, baseline_json:str, comparison_job_uid:str, assigned_to: str) -> models.FindingsSummaryCompareData:
+        data = dict({
+            "BaselineJSON": baseline_json,
+            "ComparisonJobID": comparison_job_uid,
+            "AssignedTo": assigned_to
+        })
+        response = self._request("POST",'/api/qa/get/findings/summary/comparison/baseline', json = data)
+        if (response.hasData()):
+            return models.FindingsSummaryCompareData.from_dict(response.data)
+
+
+    def get_scan_compare_detail_data(self, 
+                                     comparison_job_uid:str, 
+                                     assigned_to: str, 
+                                     workspace_id: str,
+                                     baseline_json_file_id: str) -> models.FindingsDetailCompareData:
+        data = dict({
+            "ComparisonJobID": comparison_job_uid,
+            "AssignedTo": assigned_to,
+            "WorkspaceID": workspace_id
+        })
+        response = self._request("POST",'/api/qa/get/findings/detail/comparison/baseline', json = data)
+        if (response.hasData()):
+            return models.FindingsDetailCompareData.from_dict(response.data)
+
 

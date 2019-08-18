@@ -15,7 +15,6 @@ class JobStatus(IntEnum):
     Failed=6
     Cancelled=7
 
-
     def __str__(self):
         return '%s' % self.name
 
@@ -324,3 +323,154 @@ class OperationResultData(object):
     @classmethod
     def from_dict(cls, data: dict):
         return cls(data['Succeeded'], data['Message'])
+
+
+class CreateUploadStreamData(object):
+
+    def __init__ (self, 
+                  file_name: str, 
+                  note: str, 
+                  expected_hash_hex: str):
+            self.file_name = file_name
+            self.note = note
+            self.expected_hash_hex = expected_hash_hex
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(data['FileName'],
+                   data['Note'],
+                   data['ExpectedHashHex'])
+
+
+class UploadFilePartData(object):
+
+    def __init__ (self, 
+                  file_id: str, 
+                  index: int, 
+                  bytes, 
+                  expected_hash_hex: str, 
+        ):
+            self.file_id = file_id
+            self.index = index
+            self.bytes = bytes
+            self.expected_hash_hex = expected_hash_hex
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(data['FileID'],
+                   data['Index'],
+                   data['Bytes'],
+                   data['ExpectedHashHex'])
+
+
+class CreateDownloadStreamData(object):
+
+    def __init__ (self, 
+                  file_id: str, 
+                  part_size: int, 
+                  note: str):
+            self.file_id = file_id
+            self.part_size = part_size
+            self.note = note
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(data['FileID'],
+                   data['PartSize'],
+                   data['Note'])
+
+
+class DownloadStreamData(object):
+
+    def __init__ (self, 
+                  error_message: str, 
+                  total_bytes: int, 
+                  part_size: int, 
+                  part_count: int, 
+                  expected_hash_hex: str):
+            self.error_message = error_message
+            self.total_bytes = total_bytes
+            self.part_size = part_size
+            self.part_count = part_count
+            self.expected_hash_hex = expected_hash_hex
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(data['ErrorMessage'],
+                   data['TotalBytes'],
+                   data['PartSize'],
+                   data['PartCount'],
+                   data['ExpectedHashHex'])
+
+
+class CloseDownloadStreamData(object):
+
+    def __init__ (self, 
+                  file_id: str, 
+                  discard_entry: bool, 
+                  delete_file: bool, 
+                  delete_directory: bool):
+        self.file_id = file_id
+        self.discard_entry = discard_entry
+        self.delete_file = delete_file
+        self.delete_directory = delete_directory
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(data['FileID'],
+                   data['DiscardEntry'],
+                   data['DeleteFile'],
+                   data['DeleteDirectory'])
+
+
+class GetFilePartData(object):
+
+    def __init__ (self, 
+                  file_id: str, 
+                  part_index: int):
+            self.file_id = file_id
+            self.part_index = part_index
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(data['FileID'],
+                   data['PartIndex'])
+
+
+
+class DownloadFilePartData(object):
+
+    def __init__ (self, 
+                  error_message: str, 
+                  bytes, 
+                  expected_hash_hex: str):
+            self.error_message = error_message
+            self.bytes = bytes
+            self.expected_hash_hex = expected_hash_hex
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(data['ErrorMessage'],
+                   data['Bytes'],
+                   data['ExpectedHashHex'])
+
+
+
+class DiscardFileEntryData(object):
+
+    def __init__ (self, 
+                  file_id: str, 
+                  delete_file: bool, 
+                  delete_directory: bool):
+        self.file_id = file_id
+        self.delete_file = delete_file
+        self.delete_directory = delete_directory
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(data['FileID'],
+                   data['DeleteFile'],
+                   data['DeleteDirectory'])
+
+
+

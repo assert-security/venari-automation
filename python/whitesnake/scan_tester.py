@@ -313,8 +313,10 @@ class ScanTester(object):
     def process_completed_test(self, test: TestData) -> FindingsSummaryCompareData:
         
         #TODO - replace or augment summary method with detail method when complete
+        detail_result = self.get_detail_compare_result(test);
 
-        return self.get_summary_compare_result(test);
+        summary_result = self.get_summary_compare_result(test);
+        return summary_result
 
     def get_summary_compare_result(self, test: TestData) -> FindingsSummaryCompareData:
 
@@ -324,33 +326,50 @@ class ScanTester(object):
             baseline_json = file.read()
 
         # compare the scan on the server node with the expected json representation
-        compare_result = self._api.get_scan_compare_summary_data(baseline_json, test.job.uniqueId, test.job.assignedNode)
+        compare_summary_result = self._api.get_scan_compare_summary_data(baseline_json, test.job.uniqueId, test.job.assignedNode)
 
         file_base_name = f'{test.test_definition.name}-{str(test.job.uniqueId)}'
 
         # export the json from the comparison scan
         scan_compare_json = "no comparison json"
-        if (compare_result.comparison_scan_json):
-            scan_compare_json = compare_result.comparison_scan_json.replace('\r\n','\n')
+        if (compare_summary_result.comparison_scan_json):
+            scan_compare_json = compare_summary_result.comparison_scan_json.replace('\r\n','\n')
         file_path = f'{self._scan_export_dir}/{file_base_name}.json'
         with open(file_path, mode='w+') as outfile:
             outfile.write(scan_compare_json)
 
         # export any missing findings as a separate json file
-        if (compare_result.missing_findings_json and compare_result.missing_findings_json != '[]'):
-            missing_findings_json = compare_result.missing_findings_json.replace('\r\n','\n')
+        if (compare_summary_result.missing_findings_json and compare_summary_result.missing_findings_json != '[]'):
+            missing_findings_json = compare_summary_result.missing_findings_json.replace('\r\n','\n')
             file_path = f'{self._scan_export_dir}/{file_base_name}-missing-findings.json'
             with open(file_path, mode='w+') as outfile:
                 outfile.write(missing_findings_json)
 
         # export any extra findings as a separate json file
-        if (compare_result.extra_findings_json and compare_result.extra_findings_json != '[]'):
-            extra_findings_json = compare_result.extra_findings_json.replace('\r\n','\n')
+        if (compare_summary_result.extra_findings_json and compare_summary_result.extra_findings_json != '[]'):
+            extra_findings_json = compare_summary_result.extra_findings_json.replace('\r\n','\n')
             file_path = f'{self._scan_export_dir}/{file_base_name}-extra-findings.json'
             with open(file_path, mode='w+') as outfile:
                 outfile.write(extra_findings_json)
 
-        return compare_result
+        return compare_summary_result
+
+
+    def get_detail_compare_result(self, test: TestData) -> FindingsDetailCompareData:
+
+        # get the expected baseline findings
+        path = f'{self._scan_baseline_dir}/{test.test_definition.expected_findings_file}'
+        with open(path, mode='r') as file:
+            baseline_json = file.read()
+
+        # compare the scan on the server node with the expected json representation
+        job_id = test.job.uniqueId
+        assigned_to = test.job.assignedNode
+        workspace_uid = test.job.workspace.uniqueId
+        baseline_json_file_id = test.test_definition.expected_findings_file
+        compare_details_result = self._api.get_scan_compare_detail_data(job_id, assigned_to, workspace_uid, baseline_json_file_id)
+        return compare_details_result
+
 
     def get_job_status(self, job_id: int) -> JobStatus:
         summary = self._api.get_job_summary(job_id)
