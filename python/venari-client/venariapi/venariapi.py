@@ -111,8 +111,8 @@ class VenariApi(object):
         json_data = dict(
             {
                 "DBData": {
-                    "DBID": dbdata.DBID,
-                    "DBType": dbdata.DBType
+                    "DBID": dbdata.db_id,
+                    "DBType": dbdata.db_type
                 },
             }
         )
@@ -151,7 +151,7 @@ class VenariApi(object):
             {
                 "DBData": {
                     "DBID": jobUniqueID,
-                    "DBType": models.DBTypeEnum.Job
+                    "DBType": models.DBType.Job
                 },
             }
         )
@@ -162,8 +162,8 @@ class VenariApi(object):
 
     def get_templates_for_workspace(self,db:models.DBData):
         json_data=dict({
-            "DBID":db.id,
-            "DBType":db.type
+            "DBID":db.db_id,
+            "DBType":db.db_type
         })
         endpoint = '/api/job/templates'
         resp=self._request('POST',endpoint,json=json_data)
@@ -345,16 +345,16 @@ class VenariApi(object):
         return resp.hasData()
 
 
-    def delete_workspace(self, workspace_id: int) -> models.OperationResultData:
+    def delete_workspace(self, workspace_id: int) -> models.OperationResult:
         data = dict({
             "ID": workspace_id,
             "DeleteAttachedAssets": True,
         })
         resp = self._request('DELETE', endpoint = '/api/workspace', json = data)
         if (resp.hasData()):
-            return models.OperationResultData.from_dict(resp.data)
+            return models.OperationResult.from_dict(resp.data)
         else:
-            return models.OperationResultData(False, resp.message)
+            return models.OperationResult(False, resp.message)
 
 
     def has_running_job(self, job_unique_id: str, assigned_to: str):
@@ -366,14 +366,14 @@ class VenariApi(object):
         return resp.data
 
     
-    def force_complete_job(self, job_unique_id: str, assigned_to: str) -> models.OperationResultData:
+    def force_complete_job(self, job_unique_id: str, assigned_to: str) -> models.OperationResult:
         data = dict({
             "JobUniqueID": job_unique_id,
             "AssignedTo": assigned_to,
         })
         resp = self._request('POST', endpoint = '/api/job/forcecomplete', json = data)
         if (resp.hasData()):
-            return models.OperationResultData.from_dict(resp.data)
+            return models.OperationResult.from_dict(resp.data)
 
 
     def wait_for_job_status(self, job_id: int, expected_status: models.JobStatus, max_seconds: int):
@@ -442,16 +442,16 @@ class VenariApi(object):
         })
         response = self._request("PUT",'/api/resources/file/upload/part', json = data)
         if (response.hasData()):
-            return models.OperationResultData.from_dict(response.data)
+            return models.OperationResult.from_dict(response.data)
 
 
-    def close_upload_stream(self, file_id: str) -> models.OperationResultData:
+    def close_upload_stream(self, file_id: str) -> models.OperationResult:
         response = self._request("PUT", f'/api/resources/file/upload/close/{file_id}')
         if (response.hasData()):
-            return models.OperationResultData.from_dict(response.data)
+            return models.OperationResult.from_dict(response.data)
 
 
-    def create_download_stream(self, file_id: str, note: str, part_size: int) -> models.DownloadStreamData:
+    def create_download_stream(self, file_id: str, note: str, part_size: int) -> models.DownloadStream:
         data = dict({
             "FileID": file_id,
             "Note": note,
@@ -462,7 +462,7 @@ class VenariApi(object):
             return models.DownloadStreamData.from_dict(response.data)
 
 
-    def download_file_part(self, file_id: str, index: int) -> models.DownloadFilePartData:
+    def download_file_part(self, file_id: str, index: int) -> models.DownloadFilePart:
         data = dict({
             "FileID": file_id,
             "PartIndex": index,
@@ -472,7 +472,7 @@ class VenariApi(object):
             return models.DownloadFilePartData.from_dict(response.data)
 
 
-    def close_download_stream(self, file_id: str, discard_entry: bool, delete_file: bool, delete_directory: bool) -> models.OperationResultData:
+    def close_download_stream(self, file_id: str, discard_entry: bool, delete_file: bool, delete_directory: bool) -> models.OperationResult:
         data = dict({
             "FileID": file_id,
             "DiscardEntry": discard_entry,
@@ -481,11 +481,11 @@ class VenariApi(object):
         })
         response = self._request("PUT", f'/api/resources/file/download/close', json = data)
         if (response.hasData()):
-            return models.OperationResultData.from_dict(response.data)
+            return models.OperationResult.from_dict(response.data)
 
 
 
-    def get_scan_compare_summary_data(self, baseline_json:str, comparison_job_uid:str, assigned_to: str) -> models.FindingsSummaryCompareData:
+    def get_scan_compare_summary_data(self, baseline_json:str, comparison_job_uid:str, assigned_to: str) -> models.FindingsSummaryCompare:
         data = dict({
             "BaselineJSON": baseline_json,
             "ComparisonJobID": comparison_job_uid,
@@ -500,7 +500,7 @@ class VenariApi(object):
                                      comparison_job_uid:str, 
                                      assigned_to: str, 
                                      workspace_id: str,
-                                     baseline_json_file_id: str) -> models.FindingsDetailCompareData:
+                                     baseline_json_file_id: str) -> models.FindingsDetailCompare:
         data = dict({
             "ComparisonJobID": comparison_job_uid,
             "AssignedTo": assigned_to,

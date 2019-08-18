@@ -2,21 +2,7 @@ import typing
 import datetime
 from  dateutil.parser import parse
 from enum import IntEnum
-from venariapi.models.db_data import DBData
-from venariapi.models.db_type_enum import DBTypeEnum
-
-class JobStatus(IntEnum):
-    Ready=0
-    Acquired=1
-    Running=2
-    Paused=3
-    Completed=4
-    Resume=5
-    Failed=6
-    Cancelled=7
-
-    def __str__(self):
-        return '%s' % self.name
+from venariapi.models.generated_models import *
 
 class Workspace(object):
     def __init__(self,name:str,id:int,uniqueId:str,db_data:DBData):
@@ -27,12 +13,13 @@ class Workspace(object):
 
     @classmethod 
     def from_data(cls,data:dict):
-        summary_data=data["SummaryData"]
+        summary_data = data["SummaryData"]
+        dbid = summary_data["DBData"]["DBID"]
         return cls(
             summary_data["DisplayName"],
             data["ID"],
             data["UniqueID"],
-            DBData(summary_data["DBData"]["DBID"],DBTypeEnum.Workspace))
+            DBData(dbid, DBType.WorkSpace))
 
     @property
     def db_data(self)->DBData:
@@ -86,7 +73,7 @@ class Job(object):
     @property
     def DbData(self)->DBData:
         if self._dbData==None:
-            self._dbData=DBData(self.uniqueId,DBTypeEnum.Job)
+            self._dbData=DBData(self.uniqueId,DBType.Job)
         return self._dbData
 
 class FindingCount(object):
@@ -132,15 +119,6 @@ class JobSummary(object):
 
         return cls(assigned_to, id, "", counts, results, status)
 
-class FindingSeverity(IntEnum):
-    Critical=0
-    High=1
-    Medium=2
-    Low=3
-    Info=4
-    
-    def __str__(self):
-        return '%s' % self.name
 
 class FindingParameter(object):
     location:str
@@ -166,7 +144,7 @@ class Finding(object):
         id:int,
         name:str,
         location:str,
-        severity:FindingSeverity,
+        severity:Severity,
         parameter:FindingParameter
     ):
         self.id=id
@@ -186,28 +164,6 @@ class Finding(object):
             FindingSeverity(summary["Severity"]),
             FindingParameter.fromData(props)
         )
-
-class JobTemplate(object):
-    def __init__(
-        self,
-        created_time,
-        id:int,
-        name:str,
-        settings_id:int,
-        settings_type:int,
-        settings_type_display_name:str,
-        unique_id:str,
-        version:int
-    ):
-        self.created_time=created_time
-        self.id=id
-        self.name=name
-        self.settings_id=settings_id
-        self.settings_type=settings_type
-        self.settings_type_display_name=settings_type_display_name
-        self.unique_id=unique_id
-        self.version=version
-
 
     @classmethod
     def from_data(cls,data:dict):
@@ -241,236 +197,4 @@ class JobStartResponse(object):
             return cls(job,None,True)
         else:
             return cls(None,data["Message"],False)
-
-class FindingsCompareResultEnum(IntEnum):
-    Same = 0
-    MissingFindings = 1,
-    ExtraFindings = 2,
-    MissingAndExtraFindings = 3
-
-class FindingsSummaryCompareData(object):
-    def __init__ (self, 
-                  compare_result: FindingsCompareResultEnum, 
-                  error_message: str, 
-                  comparison_scan_json: str,
-                  missing_findings_json: str,
-                  extra_findings_json: str,
-                  missing_findings_count: int,
-                  extra_findings_count: int,
-                  display_text: str
-        ):
-            self.compare_result = compare_result
-            self.error_message = error_message
-            self.comparison_scan_json = comparison_scan_json
-            self.missing_findings_json = missing_findings_json
-            self.extra_findings_json = extra_findings_json
-            self.missing_findings_count = missing_findings_count
-            self.extra_findings_count = extra_findings_count
-            self.display_text = display_text
-
-    @classmethod
-    def from_dict(cls, data:dict):
-        return cls(
-            FindingsCompareResultEnum(data['FindingsComparison']),
-                                      data['ErrorMessage'], 
-                                      data['ComparisonScanJSON'],
-                                      data['MissingFindingsJSON'],
-                                      data['ExtraFindingsJSON'],
-                                      int(data['MissingFindingsCount']),
-                                      int(data['ExtraFindingsCount']),
-                                      data['DisplayDetails'])
-
-
-class FindingsDetailCompareData(object):
-    def __init__ (self, 
-                  compare_result: FindingsCompareResultEnum, 
-                  error_message: str, 
-                  workspace_id: str,
-                  download_file_id: str,
-                  missing_findings_count: int,
-                  extra_findings_count: int,
-                  display_text: str
-        ):
-            self.compare_result = compare_result
-            self.error_message = error_message
-            self.workspace_id = workspace_id
-            self.download_file_id = download_file_id
-            self.missing_findings_count = missing_findings_count
-            self.extra_findings_count = extra_findings_count
-            self.display_text = display_text
-
-    @classmethod
-    def from_dict(cls, data:dict):
-        return cls(
-            FindingsCompareResultEnum(data['FindingsComparison']),
-                                      data['ErrorMessage'], 
-                                      data['WorkspaceID'], 
-                                      data['DownloadFileID'], 
-                                      int(data['MissingFindingsCount']),
-                                      int(data['ExtraFindingsCount']),
-                                      data['DisplayDetails'])
-
-
-
-class OperationResultData(object):
-    def __init__ (self, 
-                  succeeded: bool, 
-                  message: str, 
-        ):
-            self.succeeded = succeeded
-            self.message = message
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(data['Succeeded'], data['Message'])
-
-
-class CreateUploadStreamData(object):
-
-    def __init__ (self, 
-                  file_name: str, 
-                  note: str, 
-                  expected_hash_hex: str):
-            self.file_name = file_name
-            self.note = note
-            self.expected_hash_hex = expected_hash_hex
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(data['FileName'],
-                   data['Note'],
-                   data['ExpectedHashHex'])
-
-
-class UploadFilePartData(object):
-
-    def __init__ (self, 
-                  file_id: str, 
-                  index: int, 
-                  bytes, 
-                  expected_hash_hex: str, 
-        ):
-            self.file_id = file_id
-            self.index = index
-            self.bytes = bytes
-            self.expected_hash_hex = expected_hash_hex
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(data['FileID'],
-                   data['Index'],
-                   data['Bytes'],
-                   data['ExpectedHashHex'])
-
-
-class CreateDownloadStreamData(object):
-
-    def __init__ (self, 
-                  file_id: str, 
-                  part_size: int, 
-                  note: str):
-            self.file_id = file_id
-            self.part_size = part_size
-            self.note = note
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(data['FileID'],
-                   data['PartSize'],
-                   data['Note'])
-
-
-class DownloadStreamData(object):
-
-    def __init__ (self, 
-                  error_message: str, 
-                  total_bytes: int, 
-                  part_size: int, 
-                  part_count: int, 
-                  expected_hash_hex: str):
-            self.error_message = error_message
-            self.total_bytes = total_bytes
-            self.part_size = part_size
-            self.part_count = part_count
-            self.expected_hash_hex = expected_hash_hex
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(data['ErrorMessage'],
-                   data['TotalBytes'],
-                   data['PartSize'],
-                   data['PartCount'],
-                   data['ExpectedHashHex'])
-
-
-class CloseDownloadStreamData(object):
-
-    def __init__ (self, 
-                  file_id: str, 
-                  discard_entry: bool, 
-                  delete_file: bool, 
-                  delete_directory: bool):
-        self.file_id = file_id
-        self.discard_entry = discard_entry
-        self.delete_file = delete_file
-        self.delete_directory = delete_directory
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(data['FileID'],
-                   data['DiscardEntry'],
-                   data['DeleteFile'],
-                   data['DeleteDirectory'])
-
-
-class GetFilePartData(object):
-
-    def __init__ (self, 
-                  file_id: str, 
-                  part_index: int):
-            self.file_id = file_id
-            self.part_index = part_index
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(data['FileID'],
-                   data['PartIndex'])
-
-
-
-class DownloadFilePartData(object):
-
-    def __init__ (self, 
-                  error_message: str, 
-                  bytes, 
-                  expected_hash_hex: str):
-            self.error_message = error_message
-            self.bytes = bytes
-            self.expected_hash_hex = expected_hash_hex
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(data['ErrorMessage'],
-                   data['Bytes'],
-                   data['ExpectedHashHex'])
-
-
-
-class DiscardFileEntryData(object):
-
-    def __init__ (self, 
-                  file_id: str, 
-                  delete_file: bool, 
-                  delete_directory: bool):
-        self.file_id = file_id
-        self.delete_file = delete_file
-        self.delete_directory = delete_directory
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(data['FileID'],
-                   data['DeleteFile'],
-                   data['DeleteDirectory'])
-
-
 

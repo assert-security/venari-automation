@@ -1,4 +1,4 @@
-from venariapi.models import JobStatus, JobStartResponse, Job, Workspace, FindingsCompareResultEnum, FindingsSummaryCompareData, FindingsDetailCompareData
+from venariapi.models import *
 from models import TestData, RegressionExecResult, TestExecResult
 from scan import Configuration, ScanTestDefinition
 

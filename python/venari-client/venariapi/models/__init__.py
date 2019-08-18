@@ -1,2 +1,2 @@
 from venariapi.models.models import *
-#from venariapi.db_data import *
+from venariapi.models.generated_models import *

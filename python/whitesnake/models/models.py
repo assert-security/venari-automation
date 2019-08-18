@@ -1,4 +1,4 @@
-from venariapi.models import JobStartResponse, Job, FindingsSummaryCompareData, FindingsDetailCompareData
+from venariapi.models import *
 from scan import Configuration, ScanTestDefinition
 from enum import IntEnum
 from typing import List
@@ -15,8 +15,8 @@ class TestData(object):
                   scan_start_data: JobStartResponse,
                   test_exec_result: TestExecResult = None,
                   scan_processed: bool = False,
-                  scan_compare_summary_result: FindingsSummaryCompareData = None,
-                  scan_compare_detail_result: FindingsDetailCompareData = None,
+                  scan_compare_summary_result: FindingsSummaryCompare = None,
+                  scan_compare_detail_result: FindingsDetailCompare = None,
                   test_definition: ScanTestDefinition = None):
         self.scan_start_data = scan_start_data
         self.job = None if (not scan_start_data) else scan_start_data.job

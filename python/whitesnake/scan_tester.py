@@ -1,7 +1,8 @@
 from venariapi import VenariAuth, VenariApi, VenariAuth
-from venariapi.models import JobStatus, JobStartResponse, Job, Workspace, FindingsCompareResultEnum, FindingsSummaryCompareData, FindingsDetailCompareData
+from venariapi.models import *
 from models import TestData, TestExecResult, RegressionExecResult
 from scan import Configuration, ScanTestDefinition
+from file_manager import FileManagerClient
 from typing import List
 import venariapi.examples.credentials as creds
 import site_utils
@@ -24,13 +25,16 @@ class ScanTester(object):
 
     def __init__ (self, base_test_data_dir: str, config: Configuration):
         self._base_test_data_dir = base_test_data_dir
-        self._scan_baseline_dir = f'{self._base_test_data_dir}/exploit-scan-baselines' 
+        self._scan_detail_baseline_dir = f'{self._base_test_data_dir}/exploit-scan-detail-baselines' 
+        self._scan_summary_baseline_dir = f'{self._base_test_data_dir}/exploit-scan-summary-baselines' 
         self._scan_export_dir = None
         self._config = config
         self._api = None
+        self._auth = None
 
 
     def connect(self, auth: VenariAuth):
+        self._auth = auth
         self._api = VenariApi(auth, self._config.master_node)
 
 
@@ -43,8 +47,8 @@ class ScanTester(object):
             print(f"test run abandoned: base test data directory '{self._base_test_data_dir}' does not exist")
             return False
 
-        if (not os.path.exists(self._scan_baseline_dir)):
-            print(f"test run abandoned: base test data directory '{self._scan_baseline_dir}' does not exist")
+        if (not os.path.exists(self._scan_detail_baseline_dir)):
+            print(f"test run abandoned: base test data directory '{self._scan_detail_baseline_dir}' does not exist")
             return False
 
         self._scan_export_dir = f'{os.getcwd()}/scan-exports'.replace('\\', '/')
@@ -310,7 +314,7 @@ class ScanTester(object):
         return RegressionExecResult(span.total_seconds(), error_message, tests)
 
 
-    def process_completed_test(self, test: TestData) -> FindingsSummaryCompareData:
+    def process_completed_test(self, test: TestData) -> FindingsSummaryCompare:
         
         #TODO - replace or augment summary method with detail method when complete
         detail_result = self.get_detail_compare_result(test);
@@ -318,10 +322,10 @@ class ScanTester(object):
         summary_result = self.get_summary_compare_result(test);
         return summary_result
 
-    def get_summary_compare_result(self, test: TestData) -> FindingsSummaryCompareData:
+    def get_summary_compare_result(self, test: TestData) -> FindingsSummaryCompare:
 
         # get the expected baseline findings
-        path = f'{self._scan_baseline_dir}/{test.test_definition.expected_findings_file}'
+        path = f'{self._scan_detail_baseline_dir}/{test.test_definition.expected_findings_file}'
         with open(path, mode='r') as file:
             baseline_json = file.read()
 
@@ -355,19 +359,23 @@ class ScanTester(object):
         return compare_summary_result
 
 
-    def get_detail_compare_result(self, test: TestData) -> FindingsDetailCompareData:
+    def get_detail_compare_result(self, test: TestData) -> FindingsDetailCompare:
 
-        # get the expected baseline findings
-        path = f'{self._scan_baseline_dir}/{test.test_definition.expected_findings_file}'
-        with open(path, mode='r') as file:
-            baseline_json = file.read()
+        # upload the baseline file
+        upload_file = f'{self._scan_detail_baseline_dir}/{test.test_definition.expected_findings_file}'
+        file_manager = FileManagerClient(self._config.master_node)
+        file_manager.connect(self._auth);
+        note = f'scan comprison baseline findings upload for job {test.job.uniqueId}'
+        file_id = file_manager.upload_file(upload_file, note)
+
+        # import the baseline file into the workspace
+
 
         # compare the scan on the server node with the expected json representation
         job_id = test.job.uniqueId
         assigned_to = test.job.assignedNode
         workspace_uid = test.job.workspace.uniqueId
-        baseline_json_file_id = test.test_definition.expected_findings_file
-        compare_details_result = self._api.get_scan_compare_detail_data(job_id, assigned_to, workspace_uid, baseline_json_file_id)
+        compare_details_result = self._api.get_scan_compare_detail_data(job_id, assigned_to, workspace_uid, file_id)
         return compare_details_result
 
 
@@ -408,6 +416,7 @@ class ScanTester(object):
 
     def is_active_job(self, job: Job):
         return  job.status in [JobStatus.Acquired, JobStatus.Ready, JobStatus.Running, JobStatus.Resume]
+
 
 
 

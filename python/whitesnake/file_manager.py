@@ -1,4 +1,4 @@
-from venariapi.models import JobStatus, JobStartResponse, Job, Workspace, FindingsCompareResultEnum, FindingsSummaryCompareData, FindingsDetailCompareData
+from venariapi.models import *
 from models import TestData, RegressionExecResult, TestExecResult
 from venariapi import VenariAuth, VenariApi, VenariAuth
 import venariapi.examples.credentials as creds
@@ -16,6 +16,7 @@ class FileManagerClient(object):
         self._master_node = master_node
         self._api = None
         self._part_size = 64000
+
 
     def connect(self, auth: VenariAuth):
         self._api = VenariApi(auth, self._master_node)
@@ -63,7 +64,7 @@ class FileManagerClient(object):
 
     def download_file(self, target_file: str, file_id: str, note: str) -> bool:
 
-        # create an upload stream object on the server
+        # create a download stream
         download_data = self._api.create_download_stream(file_id, note, self._part_size)
         if (download_data.error_message or download_data.part_count == 0 or download_data.total_bytes == 0):
             return False
@@ -77,13 +78,13 @@ class FileManagerClient(object):
                     if (not bytes):
                         return False
 
-                    # TODO - file hash compare
-                    #      - delete file if it exists
-
                     f.write(bytes)
                     i += 1
 
-                # TODO - anything else ?
+            # file hash compare
+            hash = self.hash_file_bytes_to_md5_hex(target_file)
+            if (hash != download_data.expected_hash_hex):
+                return False
 
             return True
 
