@@ -62,7 +62,7 @@ class ScanTester(object):
             print("test run abandoned: failed to stop pre-existing jobs")
             return False
 
-        cleared = self.clear_existing_workspaces()
+        cleared = self.delete_existing_workspaces()
         if (not cleared):
             print("test run abandoned: failed to clear existing workspaces")
             return False
@@ -93,13 +93,13 @@ class ScanTester(object):
         for job in paused_jobs:
             has_running_job = True
             while (has_running_job):
-                has_running_job = self._api.has_running_job(job.uniqueId, job.assignedNode)
+                has_running_job = self._api.has_running_job(job.unique_id, job.assigned_to)
                 if (not has_running_job):
                     break
 
                 time.sleep(5)
 
-            result = self._api.force_complete_job(job.uniqueId, job.assignedNode)
+            result = self._api.force_complete_job(job.unique_id, job.assigned_to)
             if (not result.succeeded):
                 all_force_completed = False
 
@@ -139,7 +139,7 @@ class ScanTester(object):
                 # is complete so poll for the has_running_job condition until nothing is running`
                 has_running_job = True
                 while (has_running_job):
-                    has_running_job = self._api.has_running_job(job.uniqueId, job.assignedNode)
+                    has_running_job = self._api.has_running_job(job.unique_id, job.assigned_to)
                     if (not has_running_job):
                         break
                     time.sleep(5)
@@ -155,7 +155,7 @@ class ScanTester(object):
             print(f'finalize ran for {span.total_seconds()} seconds')
 
 
-    def clear_workspace(self, workspace):
+    def delete_workspace(self, workspace):
         result = self._api.delete_workspace(workspace.id)
         if (not result.succeeded):
             return False
@@ -163,11 +163,11 @@ class ScanTester(object):
         return True
 
 
-    def clear_existing_workspaces(self):
+    def delete_existing_workspaces(self):
         try:
             workspaces = self._api.get_workspaces()
             for workspace in workspaces:
-                self.clear_workspace(workspace)
+                self.delete_workspace(workspace)
 
             if (len(workspaces) > 0):
                 start = datetime.datetime.now()
@@ -181,7 +181,7 @@ class ScanTester(object):
                     else:
                         workspaces = api.get_workspaces()
                         for workspace in workspaces:
-                            self.clear_workspace(workspace)
+                            self.delete_workspace(workspace)
 
                     time.sleep(3)
             
@@ -191,9 +191,14 @@ class ScanTester(object):
 
 
     def start_scans(self, config: Configuration) -> List[TestData]:
+
         list = []
 
+        file_manager = FileManagerClient(self._config.master_node)
+        file_manager.connect(self._auth);
+
         for test_definition in config.tests:
+
             # unpack the test details
             url = test_definition.endpoint + "/"
             workspace_name = test_definition.workspace
@@ -206,25 +211,56 @@ class ScanTester(object):
             pattern = test_definition.test_url_content_pattern
             site_available = site_utils.is_site_available(test_url, pattern)
             if (not site_available):
-                print(f'failed to start job from template {template_name}: site not available')
+                test_exec_result = TestExecResult.AppNotAvailable
+                continue
 
             # try to start the scan if the site is available
             test_exec_result = None
-            if (site_available):
-                start_response = self._api.start_job_fromtemplate(job_name, workspace_name, template_name)
-                if (start_response.error  or start_response.job == None):
-                    test_exec_result = TestExecResult.ScanStartFail
-                    print(f'failed to start job from template {template_name}: {start_response.error}')
-            else:
-                test_exec_result = TestExecResult.AppNotAvailable
+            test_exec_error = None
+            if (not site_available):
                 start_response = None
+                test_exec_error = "site not available"
+            else:
+                start_response = self._api.start_job_fromtemplate(job_name, workspace_name, template_name)
+                if (start_response.error or start_response.job == None):
+                    test_exec_result = TestExecResult.ScanStartFail
 
-            test_data = TestData(start_response)
-            test_data.test_exec_result = test_exec_result
-            test_data.test_definition = test_definition
-            list.append(test_data)
+            # now that we have a job, import the baseline file into the workspace
+            upload_file = f'{self._scan_detail_baseline_dir}/{test_definition.expected_findings_file}'
+            note = f'scan comparison baseline import for job'
+            file_id = file_manager.upload_file(upload_file, note)
+            if (not file_id):
+                test_exec_result = TestExecResult.ScanExecuteFail
+                test_exec_error = "failed to upload baseline findings"
+            else:
+                job_unique_id = start_response.job.unique_id
+                workspace_name = test_definition.workspace
+                workspace = self._api.get_workspace_by_name(workspace_name)
+                db_data = workspace.db_data
+                import_result = self._api.import_findings(job_unique_id, db_data, workspace_name, file_id)
+                if (not import_result.succeeded):
+                    test_exec_result = TestExecResult.ScanExecuteFail
+                    test_exec_error = "failed to import baseline findings"
+                    self.stop_job(start_response.job)
+
+            if (not test_exec_result):
+                test_data = TestData(start_response)
+                test_data.test_exec_result = test_exec_result
+                test_data.test_exec_error = test_exec_error
+                test_data.test_definition = test_definition
+                list.append(test_data)
 
         return list
+
+
+    def stop_job(self, job: Job):
+        summary = self._api.get_job_summary(job.id)
+        if (summary.status == JobStatus.Ready):
+            self._api.set_job_status(job.id, JobStatus.Cancelled)
+        elif (summary.status == JobStatus.Acquired or 
+              summary.status == JobStatus.Running or 
+              summary.status == JobStatus.Resume):
+            self._api.set_job_status(job.id, JobStatus.Paused)
 
 
     def wait_for_result(self, tests: List[TestData], config: Configuration) -> RegressionExecResult:
@@ -242,7 +278,7 @@ class ScanTester(object):
                     error_message = f'Failed to start {start_fail_count} jobs:\n\n'
                     for start_fail in start_fails:
                         if (start_fail.job):
-                            error_message += f'\tjob name: {start_fail.job.name}\n\tassigned node: {start_fail.job.assignedNode}\n'
+                            error_message += f'\tjob name: {start_fail.job.name}\n\tassigned node: {start_fail.job.assigned_to}\n'
                         else:
                             error_message += f'{start_fail.error}\n'
                 
@@ -288,12 +324,23 @@ class ScanTester(object):
                 if (not test.scan_processed):
                     test.scan_processed = True
                     test.test_exec_result = TestExecResult.ScanCompleted
+
+                    # compute comparison summary
                     try:
-                        test.scan_compare_summary_result = self.process_completed_test(test)
+                        test.scan_compare_summary_result = self.compute_test_summary(test)
                     except:
-                        # TODO - incorporate this in the test data and report
                         type, value, traceback = sys.exc_info()
-                        test.job = test.job
+                        test.test_exec_result = TestExecResult.ComputeCompareDataFailed
+                        test.test_exec_error_message = self.format_exception(type, value, traceback)
+
+                    # compute comparison details
+                    try:
+                        test.scan_compare_detail_result = self.compute_test_detail(test)
+                    except:
+                        type, value, traceback = sys.exc_info()
+                        test.test_exec_result = TestExecResult.ComputeCompareDataFailed
+                        test.test_exec_error_message = traceback.traceback.format_exc(e)
+                        test.test_exec_error_message = self.format_exception(type, value, traceback)
 
             failed_jobs = [job for job in jobs if (job.status == JobStatus.Failed)]
             for job in failed_jobs:
@@ -314,15 +361,11 @@ class ScanTester(object):
         return RegressionExecResult(span.total_seconds(), error_message, tests)
 
 
-    def process_completed_test(self, test: TestData) -> FindingsSummaryCompare:
-        
-        #TODO - replace or augment summary method with detail method when complete
-        detail_result = self.get_detail_compare_result(test);
+    def format_exception(self, type, value, traceback):
+        return f'exception {str(value)}\n{str(traceback)} occured\nTODO - format exception details'
 
-        summary_result = self.get_summary_compare_result(test);
-        return summary_result
 
-    def get_summary_compare_result(self, test: TestData) -> FindingsSummaryCompare:
+    def compute_test_summary(self, test: TestData) -> FindingsSummaryCompare:
 
         # get the expected baseline findings
         path = f'{self._scan_detail_baseline_dir}/{test.test_definition.expected_findings_file}'
@@ -330,9 +373,9 @@ class ScanTester(object):
             baseline_json = file.read()
 
         # compare the scan on the server node with the expected json representation
-        compare_summary_result = self._api.get_scan_compare_summary_data(baseline_json, test.job.uniqueId, test.job.assignedNode)
+        compare_summary_result = self._api.get_scan_compare_summary_data(baseline_json, test.job.unique_id, test.job.assigned_to)
 
-        file_base_name = f'{test.test_definition.name}-{str(test.job.uniqueId)}'
+        file_base_name = f'{test.test_definition.name}-{str(test.job.unique_id)}'
 
         # export the json from the comparison scan
         scan_compare_json = "no comparison json"
@@ -359,31 +402,31 @@ class ScanTester(object):
         return compare_summary_result
 
 
-    def get_detail_compare_result(self, test: TestData) -> FindingsDetailCompare:
+    def compute_test_detail(self, test: TestData):
 
-        # upload the baseline file
-        upload_file = f'{self._scan_detail_baseline_dir}/{test.test_definition.expected_findings_file}'
+        # export the new baseline findings computed by aggregating the starting baseline and
+        # the findings from the completed scan
+        job_unique_id = test.job.unique_id
+        workspace_db_name = test.job.workspace.db_data.db_id
+        export_result = self._api.export_findings(job_unique_id, workspace_db_name)
+        if (not export_result.file_id):
+            return None
+
+        file_id = export_result.file_id
         file_manager = FileManagerClient(self._config.master_node)
         file_manager.connect(self._auth);
-        note = f'scan comprison baseline findings upload for job {test.job.uniqueId}'
-        file_id = file_manager.upload_file(upload_file, note)
-
-        # import the baseline file into the workspace
-        job_uid = test.job.uniqueId
-        workspace_uid = test.job.workspace.uniqueId
-        dbdata = DBData(workspace_uid, DBType.WorkSpace)
         workspace_name = test.test_definition.workspace
-        import_result = self._api.import_findings(job_uid, dbdata, workspace_name, file_id)
-
+        download_to_file = f'{self._scan_export_dir}/_findings_export_{workspace_name}.json'
+        download_result = file_manager.download_file(download_to_file, file_id, None)
 
         # compare the scan on the server node with the expected json representation
 
         # this API below needs to be rethought and maybe removed from QA controller
         #
         # 
-        # assigned_to = test.job.assignedNode
-        # workspace_uid = test.job.workspace.uniqueId
-        # compare_details_result = self._api.get_scan_compare_detail_data(job_id, assigned_to, workspace_uid, file_id)
+        # assigned_to = test.job.assigned_to
+        # workspace_unique_id = test.job.workspace.unique_id
+        # compare_details_result = self._api.get_scan_compare_detail_data(job_id, assigned_to, workspace_unique_id, file_id)
         # return compare_details_result
 
 

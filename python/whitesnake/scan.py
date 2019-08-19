@@ -61,7 +61,7 @@ def get_config(testconfig_path):
     return config
     
 def import_templates(config: Configuration):
-    auth = creds.loadCredentials(config.master_node)
+    auth = creds.load_credentials(config.master_node)
     #we are authenticated at this point.
     api = VenariApi(auth,config.master_node)
 

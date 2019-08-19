@@ -144,7 +144,7 @@ if __name__ == '__main__':
     file_manager = FileManagerClient(master_node)
 
     # connect to the master node
-    auth = creds.loadCredentials(master_node)
+    auth = creds.load_credentials(master_node)
     file_manager.connect(auth);
     upload_file = "C:/Users/Steve/Desktop/Sequoia Pitch Template.pdf"
     target_file = "C:/Users/Steve/Desktop/round-trip-copy-of-Sequoia Pitch Template.pdf"

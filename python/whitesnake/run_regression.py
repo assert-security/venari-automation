@@ -9,6 +9,8 @@ import time
 import datetime
 from scan import *
 from pathlib import Path
+import sys
+import traceback
 
 if __name__ == '__main__':
 
@@ -19,13 +21,14 @@ if __name__ == '__main__':
     tester = ScanTester(base_test_data_dir, config)
 
     # connect to the master node
-    auth = creds.loadCredentials(config.master_node)
+    auth = creds.load_credentials(config.master_node)
     tester.connect(auth);
     
     # initialize the regression pass
     go = tester.setup_regression()
     
     if (go):
+
         # create templates for configured tests
         import_templates(config)
 

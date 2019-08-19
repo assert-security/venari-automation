@@ -5,10 +5,10 @@ from enum import IntEnum
 from venariapi.models.generated_models import *
 
 class Workspace(object):
-    def __init__(self,name:str,id:int,uniqueId:str,db_data:DBData):
+    def __init__(self,name:str,id:int,unique_id:str,db_data:DBData):
         self.name=name
         self.id:int=id
-        self.uniqueId=uniqueId
+        self.unique_id = unique_id
         self._db_data:DBData=db_data
 
     @classmethod 
@@ -29,19 +29,19 @@ class Job(object):
     def __init__(self,
         name:str,
         id:int,
-        uniqueId:str,
+        unique_id:str,
         status:JobStatus,
         activity:[],
-        assignedNode:str,
+        assigned_to:str,
         workspace:Workspace):
 
         self.name=name
         self.status=status
         self.id=id
-        self.assignedNode=assignedNode
+        self.assigned_to = assigned_to
         self.workspace=workspace
         self._dbData:DBData=None
-        self.uniqueId=uniqueId
+        self.unique_id = unique_id
         a=None
         self.duration=0
         if(activity and len(activity) > 0):
@@ -73,7 +73,7 @@ class Job(object):
     @property
     def DbData(self)->DBData:
         if self._dbData==None:
-            self._dbData=DBData(self.uniqueId,DBType.Job)
+            self._dbData=DBData(self.unique_id,DBType.Job)
         return self._dbData
 
 class FindingCount(object):
@@ -89,14 +89,14 @@ class FindingCount(object):
 class JobSummary(object):
     def __init__(
         self,
-        assignedNode:str,
+        assigned_to:str,
         id:int,
         name:str,
         counts,
         raw:dict,
         status:JobStatus
     ):
-        self.assigned_node = assignedNode
+        self.assigned_node = assigned_to
         self.finding_counts = counts
         self.status = status
 

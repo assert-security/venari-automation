@@ -420,8 +420,10 @@ class VenariApi(object):
         new_json=json.loads(newdata)
         return new_json
 
+
     def base64(self, bytes):
         return base64.b64encode(bytes)
+
 
     def create_upload_stream(self, file: str, note: str, expected_hash_hex: str) -> str:
         data = dict({
@@ -459,7 +461,7 @@ class VenariApi(object):
         })
         response = self._request("POST",'/api/resources/file/download/create', json = data)
         if (response.hasData()):
-            return models.DownloadStreamData.from_dict(response.data)
+            return models.DownloadStream.from_dict(response.data)
 
 
     def download_file_part(self, file_id: str, index: int) -> models.DownloadFilePart:
@@ -469,7 +471,7 @@ class VenariApi(object):
         })
         response = self._request("PUT",'/api/resources/file/download/part', json = data)
         if (response.hasData()):
-            return models.DownloadFilePartData.from_dict(response.data)
+            return models.DownloadFilePart.from_dict(response.data)
 
 
     def close_download_stream(self, file_id: str, discard_entry: bool, delete_file: bool, delete_directory: bool) -> models.OperationResult:
@@ -517,10 +519,21 @@ class VenariApi(object):
             "WorkspaceName": workspaceName,
             "FileID": file_id
         })
-        print(f'\n\n{data}\n\n')
         response = self._request("POST",'/api/findings/import', json = data)
         if (response.hasData()):
             return models.OperationResult.from_dict(response.data)
+
+
+    def export_findings(self, job_uid: str, workspace_db_name: str) -> models.ExportFindingsResult:
+        data = dict({
+            "WorkspaceDbName": workspace_db_name,
+            "JobUniqueID": job_uid,
+        })
+        response = self._request("POST",'/api/findings/export', json = data)
+        if (response.hasData()):
+            return models.ExportFindingsResult.from_dict(response.data)
+
+
 
     def dict_from_dbdata(self, db_data: models.DBData) -> dict:
         return dict({"DBID": db_data.db_id,

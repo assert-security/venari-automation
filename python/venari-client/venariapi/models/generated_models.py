@@ -244,14 +244,14 @@ class UploadFilePart(object):
 class ExportFindings(object):
 
     def __init__ (self,
-                  workspace_unique_id: str,
+                  workspace_db_name: str,
                   job_unique_id: str):
-        self.workspace_unique_id: str = workspace_unique_id
+        self.workspace_db_name: str = workspace_db_name
         self.job_unique_id: str = job_unique_id
 
     @classmethod
     def from_dict(cls, data: dict):
-        return cls(data['WorkspaceUniqueID'], data['JobUniqueID'])
+        return cls(data['WorkspaceDbName'], data['JobUniqueID'])
 
 
 class ExportFindingsResult(object):
@@ -295,15 +295,13 @@ class FindingsDetailCompare(object):
                   display_details: str,
                   missing_findings_count: int,
                   extra_findings_count: int,
-                  workspace_id: str,
-                  download_file_id: str):
+                  workspace_id: str):
         self.error_message: str = error_message
         self.findings_comparison: FindingsCompareResult = findings_comparison
         self.display_details: str = display_details
         self.missing_findings_count: int = missing_findings_count
         self.extra_findings_count: int = extra_findings_count
         self.workspace_id: str = workspace_id
-        self.download_file_id: str = download_file_id
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -312,8 +310,7 @@ class FindingsDetailCompare(object):
                    data['DisplayDetails'],
                    data['MissingFindingsCount'],
                    data['ExtraFindingsCount'],
-                   data['WorkspaceID'],
-                   data['DownloadFileID'])
+                   data['WorkspaceID'])
 
 
 class FindingsSummaryCompare(object):

@@ -3,7 +3,7 @@ from os import path
 from venariapi import VenariAuth
 from pathlib import Path
 
-def saveCredentials(master_url,token_endpoint:str,secret:str,client_id:str,extra:dict):
+def save_credentials(master_url,token_endpoint:str,secret:str,client_id:str,extra:dict):
      credentials:dict={
           'master_url': master_url,
           'token_endpoint':token_endpoint,
@@ -27,7 +27,7 @@ def saveCredentials(master_url,token_endpoint:str,secret:str,client_id:str,extra
           #json.dump(list(urlmap.values()), outfile)
           json.dump([obj for obj in urlmap.values()], outfile)
 
-def loadCredentials(master_url:str)->VenariAuth:
+def load_credentials(master_url:str)->VenariAuth:
      resp=None
      file_name=str(Path.home())+'/venari_cli.json'
      if(path.exists(file_name)):
