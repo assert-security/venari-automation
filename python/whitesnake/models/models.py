@@ -18,13 +18,13 @@ class TestData(object):
                   scan_compare_summary_result: FindingsSummaryCompare = None,
                   scan_compare_detail_result: FindingsDetailCompare = None,
                   test_definition: ScanTestDefinition = None):
-        self.scan_start_data = scan_start_data
-        self.job = None if (not scan_start_data) else scan_start_data.job
-        self.scan_processed = scan_processed
-        self.scan_compare_summary_result = scan_compare_summary_result
-        self.scan_compare_detail_result = scan_compare_detail_result
-        self.test_exec_result = test_exec_result
-        self.test_definition = test_definition
+        self.scan_start_data: JobStartResponse = scan_start_data
+        self.job: Job = None if (not scan_start_data) else scan_start_data.job
+        self.scan_processed: bool = scan_processed
+        self.scan_compare_summary_result: FindingsSummaryCompare = scan_compare_summary_result
+        self.scan_compare_detail_result: FindingsDetailCompare = scan_compare_detail_result
+        self.test_exec_result: TestExecResult = test_exec_result
+        self.test_definition: ScanTestDefinition = test_definition
 
 
 class RegressionExecResult(object):

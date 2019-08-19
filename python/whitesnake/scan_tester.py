@@ -369,14 +369,22 @@ class ScanTester(object):
         file_id = file_manager.upload_file(upload_file, note)
 
         # import the baseline file into the workspace
+        job_uid = test.job.uniqueId
+        workspace_uid = test.job.workspace.uniqueId
+        dbdata = DBData(workspace_uid, DBType.WorkSpace)
+        workspace_name = test.test_definition.workspace
+        import_result = self._api.import_findings(job_uid, dbdata, workspace_name, file_id)
 
 
         # compare the scan on the server node with the expected json representation
-        job_id = test.job.uniqueId
-        assigned_to = test.job.assignedNode
-        workspace_uid = test.job.workspace.uniqueId
-        compare_details_result = self._api.get_scan_compare_detail_data(job_id, assigned_to, workspace_uid, file_id)
-        return compare_details_result
+
+        # this API below needs to be rethought and maybe removed from QA controller
+        #
+        # 
+        # assigned_to = test.job.assignedNode
+        # workspace_uid = test.job.workspace.uniqueId
+        # compare_details_result = self._api.get_scan_compare_detail_data(job_id, assigned_to, workspace_uid, file_id)
+        # return compare_details_result
 
 
     def get_job_status(self, job_id: int) -> JobStatus:

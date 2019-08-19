@@ -484,7 +484,6 @@ class VenariApi(object):
             return models.OperationResult.from_dict(response.data)
 
 
-
     def get_scan_compare_summary_data(self, baseline_json:str, comparison_job_uid:str, assigned_to: str) -> models.FindingsSummaryCompare:
         data = dict({
             "BaselineJSON": baseline_json,
@@ -511,3 +510,18 @@ class VenariApi(object):
             return models.FindingsDetailCompareData.from_dict(response.data)
 
 
+    def import_findings(self, job_uid: str, db_data: models.DBData, workspaceName: str, file_id: str) -> models.OperationResult:
+        data = dict({
+            "JobUniqueID": job_uid,
+            "DBData": self.dict_from_dbdata(db_data),
+            "WorkspaceName": workspaceName,
+            "FileID": file_id
+        })
+        print(f'\n\n{data}\n\n')
+        response = self._request("POST",'/api/findings/import', json = data)
+        if (response.hasData()):
+            return models.OperationResult.from_dict(response.data)
+
+    def dict_from_dbdata(self, db_data: models.DBData) -> dict:
+        return dict({"DBID": db_data.db_id,
+                     "DBType": db_data.db_type})
