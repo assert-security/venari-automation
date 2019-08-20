@@ -326,12 +326,12 @@ class ScanTester(object):
                     test.test_exec_result = TestExecResult.ScanCompleted
 
                     # compute comparison summary
-                    try:
-                        test.scan_compare_summary_result = self.compute_test_summary(test)
-                    except:
-                        type, value, traceback = sys.exc_info()
-                        test.test_exec_result = TestExecResult.ComputeCompareDataFailed
-                        test.test_exec_error_message = self.format_exception(type, value, traceback)
+                    #try:
+                    #    test.scan_compare_summary_result = self.compute_test_summary(test)
+                    #except:
+                    #    type, value, traceback = sys.exc_info()
+                    #    test.test_exec_result = TestExecResult.ComputeCompareDataFailed
+                    #    test.test_exec_error_message = self.format_exception(type, value, traceback)
 
                     # compute comparison details
                     try:
@@ -339,7 +339,6 @@ class ScanTester(object):
                     except:
                         type, value, traceback = sys.exc_info()
                         test.test_exec_result = TestExecResult.ComputeCompareDataFailed
-                        test.test_exec_error_message = traceback.traceback.format_exc(e)
                         test.test_exec_error_message = self.format_exception(type, value, traceback)
 
             failed_jobs = [job for job in jobs if (job.status == JobStatus.Failed)]
@@ -402,12 +401,13 @@ class ScanTester(object):
         return compare_summary_result
 
 
-    def compute_test_detail(self, test: TestData):
+    def compute_test_detail(self, test: TestData) -> FindingsSummaryCompare:
 
         # export the new baseline findings computed by aggregating the starting baseline and
         # the findings from the completed scan
-        job_unique_id = test.job.unique_id
-        workspace_db_name = test.job.workspace.db_data.db_id
+        job = test.job
+        job_unique_id = job.unique_id
+        workspace_db_name = job.workspace.db_data.db_id
         export_result = self._api.export_findings(job_unique_id, workspace_db_name)
         if (not export_result.file_id):
             return None
@@ -419,15 +419,10 @@ class ScanTester(object):
         download_to_file = f'{self._scan_export_dir}/_findings_export_{workspace_name}.json'
         download_result = file_manager.download_file(download_to_file, file_id, None)
 
-        # compare the scan on the server node with the expected json representation
-
-        # this API below needs to be rethought and maybe removed from QA controller
-        #
-        # 
-        # assigned_to = test.job.assigned_to
-        # workspace_unique_id = test.job.workspace.unique_id
-        # compare_details_result = self._api.get_scan_compare_detail_data(job_id, assigned_to, workspace_unique_id, file_id)
-        # return compare_details_result
+        assigned_to = job.assigned_to
+        workspace_unique_id = job.workspace.unique_id
+        compare_details_result = self._api.get_scan_compare_detail_data(job_unique_id, assigned_to, workspace_unique_id)
+        return compare_details_result
 
 
     def get_job_status(self, job_id: int) -> JobStatus:

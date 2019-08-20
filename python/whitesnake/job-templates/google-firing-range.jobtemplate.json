@@ -1,6 +1,6 @@
 {
     "WorkspaceName": "Google Firing Range",
-    "JobTemplateName": "Exploit (2X)",
+    "JobTemplateName": "Exploit",
     "SettingsType": "ExploiterJobSettingsDbObject",
     "SettingsTypeDisplayName": "Exploiter",
     "Patch": [
@@ -176,7 +176,7 @@
                 {
                     "UniqueID": "8d191100-bbe6-4470-852d-fbcffa782684",
                     "DisplayName": null,
-                    "MaxConcurrent": 20,
+                    "MaxConcurrent": "30",
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -837,7 +837,7 @@
                 {
                     "UniqueID": "3428dd35-9b54-4121-a632-4cdbb1e914f6",
                     "DisplayName": null,
-                    "MaxConcurrent": 20,
+                    "MaxConcurrent": "30",
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -853,7 +853,7 @@
                 {
                     "UniqueID": "3d04dd24-2b30-4236-ab0a-a59d0c9e30ce",
                     "DisplayName": null,
-                    "MaxConcurrent": 20,
+                    "MaxConcurrent": "30",
                     "Isolate": false,
                     "MaxDurationTicks": null,
                     "NodeProcessCount": 1,
@@ -922,17 +922,7 @@
             "op": "replace"
         },
         {
-            "value": true,
-            "path": "/SharedJob",
-            "op": "replace"
-        },
-        {
-            "value": "1",
-            "path": "/MaxSharedNodes",
-            "op": "replace"
-        },
-        {
-            "value": 20,
+            "value": "30",
             "path": "/MaxConcurrentBrowsersPerProcess",
             "op": "replace"
         }
