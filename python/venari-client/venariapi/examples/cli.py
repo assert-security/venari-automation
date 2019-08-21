@@ -28,8 +28,9 @@ def cli(ctx,url:str,verify_ssl):
           ctx.obj=CommonParams()
           ctx.obj.url=url
           RequestHelper.verify_ssl=verify_ssl
-          auth=creds.load_credentials(url)
-          ctx.obj.api=VenariApi(auth,url)
+          if(not "login" in sys.argv):
+               auth=creds.load_credentials(url)
+               ctx.obj.api=VenariApi(auth,url)
 
 @cli.command()
 @click.option('--client_id',nargs=1,required=True)
@@ -40,7 +41,6 @@ def login(ctx,client_id,extra_idp,secret):
      try:
           if(not secret):
                secret=getpass.getpass(prompt='client secret:')
-          #load authentication info from file if we have it..
           idp=VenariApi.get_idp_info(ctx.obj.url)
           token_endpoint=VenariApi.get_token_endpoint(idp.authority)
           VenariAuth.login(token_endpoint,secret,client_id,extra_idp)
