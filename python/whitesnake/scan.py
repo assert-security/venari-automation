@@ -65,13 +65,15 @@ def get_config(testconfig_path):
     return config
     
 def import_templates(config: Configuration):
+    logger.debug(f"Attempting to authenticate with {config.master_node}")
     auth = creds.load_credentials(config.master_node)
     if(auth is None):
         raise Exception(f"No stored credentials found for master url \"{config.master_node}\"")
+    logger.info("Authentication successful")
     logger.debug(auth)
     #we are authenticated at this point.
     api = VenariApi(auth,config.master_node)
-
+    
     for application in config.tests:
         #test:ScanTestDefinition= next (x for x in config.tests if x.name== 'wavesep concurrent')
         if (application):
@@ -116,7 +118,7 @@ def build_stack(docker:Docker,swarm_hostname:str,config_path:str,tests:List[Scan
     args="docker-compose " + args
     with open("docker-compose.yml",'wb') as cfile:
         newenv=os.environ
-        newenv["IDP_EXTERNAL_URL"]="https://master.assertsecurity.io:9002"
+        newenv["IDP_EXTERNAL_URL"]="https://gemini.assertsecurity.io:9002"
         newenv["MASTER_EXTERNAL_PORT"]="9013"
         proc=subprocess.run(args,stdout=subprocess.PIPE,env=newenv)
         if(proc.returncode == 0):
@@ -150,6 +152,7 @@ def run(testconfig,swarmhost:str,tls:bool,importonly:bool,master:str):
         docker.shutdown_stack("whitesnake")
         create_secrets(docker)
         build_stack(docker,swarmhost,config_path,config.tests)
+
     if(master):
         config.master_node=master
     import_templates(config)    
@@ -161,3 +164,4 @@ def run(testconfig,swarmhost:str,tls:bool,importonly:bool,master:str):
 
 if __name__ == '__main__':
     cli()
+
