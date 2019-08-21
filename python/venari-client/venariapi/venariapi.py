@@ -486,29 +486,18 @@ class VenariApi(object):
             return models.OperationResult.from_dict(response.data)
 
 
-    def get_scan_compare_summary_data(self, baseline_json:str, comparison_job_unique_id:str, assigned_to: str) -> models.FindingsSummaryCompare:
+    def get_job_compare_data(self, 
+                             comparison_job_unique_id:str, 
+                             assigned_to: str, 
+                             workspace_unique_id: str) -> models.JobCompareResult:
         data = dict({
-            "BaselineJSON": baseline_json,
-            "ComparisonJobUniqueID": comparison_job_uid,
-            "AssignedTo": assigned_to
-        })
-        response = self._request("POST",'/api/qa/get/findings/summary/comparison/baseline', json = data)
-        if (response.hasData()):
-            return models.FindingsSummaryCompare.from_dict(response.data)
-
-
-    def get_scan_compare_detail_data(self, 
-                                     comparison_job_unique_id:str, 
-                                     assigned_to: str, 
-                                     workspace_unique_id: str) -> models.FindingsDetailCompare:
-        data = dict({
-            "ComparisonJobUniqueID": comparison_job_unique_id,
+            "JobUniqueID": comparison_job_unique_id,
             "AssignedTo": assigned_to,
-            "WorkspaceUniqueID": workspace_unique_id
+            "WorkspaceDbName": workspace_unique_id
         })
-        response = self._request("POST",'/api/qa/get/findings/detail/comparison/baseline', json = data)
+        response = self._request("POST",'/api/qa/get/findings/comparison', json = data)
         if (response.hasData()):
-            return models.FindingsDetailCompare.from_dict(response.data)
+            return models.JobCompareResult.from_dict(response.data)
 
 
     def import_findings(self, job_uid: str, db_data: models.DBData, workspaceName: str, file_id: str) -> models.OperationResult:

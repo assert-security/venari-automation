@@ -26,7 +26,6 @@ class ScanTester(object):
     def __init__ (self, base_test_data_dir: str, config: Configuration):
         self._base_test_data_dir = base_test_data_dir
         self._scan_detail_baseline_dir = f'{self._base_test_data_dir}/exploit-scan-detail-baselines' 
-        self._scan_summary_baseline_dir = f'{self._base_test_data_dir}/exploit-scan-summary-baselines' 
         self._scan_export_dir = None
         self._config = config
         self._api = None
@@ -325,17 +324,9 @@ class ScanTester(object):
                     test.scan_processed = True
                     test.test_exec_result = TestExecResult.ScanCompleted
 
-                    # compute comparison summary
-                    #try:
-                    #    test.scan_compare_summary_result = self.compute_test_summary(test)
-                    #except:
-                    #    type, value, traceback = sys.exc_info()
-                    #    test.test_exec_result = TestExecResult.ComputeCompareDataFailed
-                    #    test.test_exec_error_message = self.format_exception(type, value, traceback)
-
                     # compute comparison details
                     try:
-                        test.scan_compare_detail_result = self.compute_test_detail(test)
+                        test.compare_result = self.compare_job_to_baseline(test)
                     except:
                         type, value, traceback = sys.exc_info()
                         test.test_exec_result = TestExecResult.ComputeCompareDataFailed
@@ -364,44 +355,7 @@ class ScanTester(object):
         return f'exception {str(value)}\n{str(traceback)} occured\nTODO - format exception details'
 
 
-    def compute_test_summary(self, test: TestData) -> FindingsSummaryCompare:
-
-        # get the expected baseline findings
-        path = f'{self._scan_detail_baseline_dir}/{test.test_definition.expected_findings_file}'
-        with open(path, mode='r') as file:
-            baseline_json = file.read()
-
-        # compare the scan on the server node with the expected json representation
-        compare_summary_result = self._api.get_scan_compare_summary_data(baseline_json, test.job.unique_id, test.job.assigned_to)
-
-        file_base_name = f'{test.test_definition.name}-{str(test.job.unique_id)}'
-
-        # export the json from the comparison scan
-        scan_compare_json = "no comparison json"
-        if (compare_summary_result.comparison_scan_json):
-            scan_compare_json = compare_summary_result.comparison_scan_json.replace('\r\n','\n')
-        file_path = f'{self._scan_export_dir}/{file_base_name}.json'
-        with open(file_path, mode='w+') as outfile:
-            outfile.write(scan_compare_json)
-
-        # export any missing findings as a separate json file
-        if (compare_summary_result.missing_findings_json and compare_summary_result.missing_findings_json != '[]'):
-            missing_findings_json = compare_summary_result.missing_findings_json.replace('\r\n','\n')
-            file_path = f'{self._scan_export_dir}/{file_base_name}-missing-findings.json'
-            with open(file_path, mode='w+') as outfile:
-                outfile.write(missing_findings_json)
-
-        # export any extra findings as a separate json file
-        if (compare_summary_result.extra_findings_json and compare_summary_result.extra_findings_json != '[]'):
-            extra_findings_json = compare_summary_result.extra_findings_json.replace('\r\n','\n')
-            file_path = f'{self._scan_export_dir}/{file_base_name}-extra-findings.json'
-            with open(file_path, mode='w+') as outfile:
-                outfile.write(extra_findings_json)
-
-        return compare_summary_result
-
-
-    def compute_test_detail(self, test: TestData) -> FindingsSummaryCompare:
+    def compare_job_to_baseline(self, test: TestData) -> JobCompareResult:
 
         # export the new baseline findings computed by aggregating the starting baseline and
         # the findings from the completed scan
@@ -416,13 +370,12 @@ class ScanTester(object):
         file_manager = FileManagerClient(self._config.master_node)
         file_manager.connect(self._auth);
         workspace_name = test.test_definition.workspace
-        download_to_file = f'{self._scan_export_dir}/_findings_export_{workspace_name}.json'
+        download_to_file = f'{self._scan_export_dir}/findings_export_{workspace_name}.json'
         download_result = file_manager.download_file(download_to_file, file_id, None)
 
         assigned_to = job.assigned_to
-        workspace_unique_id = job.workspace.unique_id
-        compare_details_result = self._api.get_scan_compare_detail_data(job_unique_id, assigned_to, workspace_unique_id)
-        return compare_details_result
+        compare_result = self._api.get_job_compare_data(job_unique_id, assigned_to, workspace_db_name)
+        return compare_result
 
 
     def get_job_status(self, job_id: int) -> JobStatus:

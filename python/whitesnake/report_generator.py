@@ -47,9 +47,9 @@ class ReportGenerator(object):
                     if (test.scan_start_data.job.duration):
                         report += f'DURATION:            {test.scan_start_data.job.duration}\n\n'
 
-                    report += f'BASELINE COMPARISON: {str(test.scan_compare_summary_result.compare_result)}\n'
+                    report += f'BASELINE COMPARISON: {str(test.compare_result.comparison)}\n'
                     report += '********************************************************************************\n\n'
-                    display_text = test.scan_compare_summary_result.display_text.replace('\r\n','\n')
+                    display_text = test.compare_result.display_details.replace('\r\n','\n')
                     report += f'{display_text}\n'
                 except:
                     pass
@@ -61,7 +61,7 @@ class ReportGenerator(object):
         if (not test.test_definition):
             return (False, "no test definition provided")
 
-        if (not test.scan_compare_summary_result):
+        if (not test.compare_result):
             return (False, "empty scan compare result")
 
         if (not test.scan_processed):
@@ -79,10 +79,14 @@ class ReportGenerator(object):
         if (test.test_exec_result == TestExecResult.ScanExecuteFail):
             return (False, "scan failed during job run")
 
-        if (test.scan_compare_summary_result.missing_findings_count > test.test_definition.max_missing_findings):
-            message = f'{test.scan_compare_summary_result.missing_findings_count} missing findings exceeded limit of {test.test_definition.max_missing_findings}'
+        if (test.compare_result.missing_findings_count > test.test_definition.max_missing_findings):
+            message = f'{test.compare_result.missing_findings_count} missing findings exceeded limit of {test.test_definition.max_missing_findings}'
             return (False, message)
 
         return (True, "")
+
+
+
+
 
 

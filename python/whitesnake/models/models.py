@@ -21,8 +21,7 @@ class TestData(object):
         self.test_exec_result: TestExecResult = None
         self.test_exec_error_message = None
         self.scan_processed: bool = False
-        self.scan_compare_summary_result: FindingsSummaryCompare = None
-        self.scan_compare_detail_result: FindingsDetailCompare = None
+        self.compare_result: JobCompare = None
 
 
 class RegressionExecResult(object):

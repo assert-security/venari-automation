@@ -13,7 +13,7 @@ class DBType(IntEnum):
 
 
 
-class FindingsCompareResult(IntEnum):
+class JobComparison(IntEnum):
     Same = 0
     MissingFindings = 1
     ExtraFindings = 2
@@ -287,62 +287,30 @@ class ImportFindings(object):
                    data['FileID'])
 
 
-class FindingsDetailCompare(object):
+class JobCompareResult(object):
 
     def __init__ (self,
+                  workspace_db_name: str,
                   error_message: str,
-                  findings_comparison: FindingsCompareResult,
+                  comparison: JobComparison,
                   display_details: str,
                   missing_findings_count: int,
-                  extra_findings_count: int,
-                  workspace_id: str):
+                  extra_findings_count: int):
+        self.workspace_db_name: str = workspace_db_name
         self.error_message: str = error_message
-        self.findings_comparison: FindingsCompareResult = findings_comparison
+        self.comparison: JobComparison = comparison
         self.display_details: str = display_details
         self.missing_findings_count: int = missing_findings_count
         self.extra_findings_count: int = extra_findings_count
-        self.workspace_id: str = workspace_id
 
     @classmethod
     def from_dict(cls, data: dict):
-        return cls(data['ErrorMessage'],
-                   data['FindingsComparison'],
+        return cls(data['WorkspaceDbName'],
+                   data['ErrorMessage'],
+                   data['Comparison'],
                    data['DisplayDetails'],
                    data['MissingFindingsCount'],
-                   data['ExtraFindingsCount'],
-                   data['WorkspaceID'])
-
-
-class FindingsSummaryCompare(object):
-
-    def __init__ (self,
-                  error_message: str,
-                  findings_comparison: FindingsCompareResult,
-                  display_details: str,
-                  missing_findings_count: int,
-                  extra_findings_count: int,
-                  comparison_scan_json: str,
-                  missing_findings_json: str,
-                  extra_findings_json: str):
-        self.error_message: str = error_message
-        self.findings_comparison: FindingsCompareResult = findings_comparison
-        self.display_details: str = display_details
-        self.missing_findings_count: int = missing_findings_count
-        self.extra_findings_count: int = extra_findings_count
-        self.comparison_scan_json: str = comparison_scan_json
-        self.missing_findings_json: str = missing_findings_json
-        self.extra_findings_json: str = extra_findings_json
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(data['ErrorMessage'],
-                   data['FindingsComparison'],
-                   data['DisplayDetails'],
-                   data['MissingFindingsCount'],
-                   data['ExtraFindingsCount'],
-                   data['ComparisonScanJSON'],
-                   data['MissingFindingsJSON'],
-                   data['ExtraFindingsJSON'])
+                   data['ExtraFindingsCount'])
 
 
 class JobTemplate(object):
