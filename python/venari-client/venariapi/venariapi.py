@@ -27,6 +27,8 @@ from venariapi.venari_query import FindingQuery
 import venariapi.models as models
 import base64
 import os
+import logging
+logger = logging.getLogger('venariapi')
 
 class VenariApi(object):
     def __init__(self, auth, api_url, verify_ssl=True, timeout=60, user_agent=None,
@@ -301,7 +303,7 @@ class VenariApi(object):
             }
         }
         resp=self._request("POST",'/api/workflow/save',json=params)
-        print(resp.success)
+        logger.debug(f"import_workflow result: {resp.success}")
         return resp.success
     
 
@@ -383,7 +385,7 @@ class VenariApi(object):
 
         start = datetime.datetime.now()
         while (actual_status != expected_status):
-            print(str.format('waiting for status: expected {} : current: {}', expected_status, actual_status))
+            logger.debug(str.format('waiting for status: expected {} : current: {}', expected_status, actual_status))
             span = datetime.datetime.now() - start
             if (span.total_seconds() > max_seconds):
                 return False
@@ -405,13 +407,13 @@ class VenariApi(object):
         endpoint=urlparse(new_baseurl)
         new_baseurl=f"{endpoint.scheme}://{endpoint.netloc}"
         
-        print(new_baseurl)
+        logger.debug(f"new base_url: {new_baseurl}")
 
         for(path,value) in dpath.util.search(template_patch,"/Patch",yielded=True):
             for p in value:
                 if(p["path"]=="/ResourceScope/SeedResources/StartUrls"):
                     existing_baseurl=(p["value"][0])
-                    print(f"original url: {existing_baseurl}")
+                    logger.debug(f"original url: {existing_baseurl}")
                     endpoint=urlparse(existing_baseurl)
                     existing_baseurl=f"{endpoint.scheme}://{endpoint.netloc}"
 
