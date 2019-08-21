@@ -45,6 +45,8 @@ class ScanTestDefinition(object):
         self.workflows=workflows
         self.expected_findings_file = expected_findings_file
         self.stack_file=stack_file
+        self.is_invalid=False
+        self.invalid_reason=None
 
     @classmethod
     def from_json(cls, json_data: dict):

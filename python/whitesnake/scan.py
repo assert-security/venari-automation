@@ -22,6 +22,7 @@ import aiohttp
 from aiohttp import ClientSession
 import logging
 from docker import Docker
+import sys
 
 logger = logging.getLogger('testdeployment')
 logger.setLevel(logging.DEBUG)
@@ -74,16 +75,20 @@ def import_templates(config: Configuration):
     for application in config.tests:
         #test:ScanTestDefinition= next (x for x in config.tests if x.name== 'wavesep concurrent')
         if (application):
-            template = get_template(application,"./job-templates")
-            #Import the job template and remap the template's endpoint/hosts to what's in our test.
-            api.import_template(template, application.workspace, application.endpoint)
-            #now import the workflows
-            if(application.workflows):
-                for w in application.workflows:
-                    fullPath=os.path.join(".","job-templates",w)
-                    with codecs.open(fullPath,"r",encoding="utf-8") as workflow_file:
-                        text=workflow_file.read()
-                        api.import_workflow(text,application.workspace)
+            try:
+                template = get_template(application,"./job-templates")
+                #Import the job template and remap the template's endpoint/hosts to what's in our test.
+                api.import_template(template, application.workspace, application.endpoint)
+                #now import the workflows
+                if(application.workflows):
+                    for w in application.workflows:
+                        fullPath=os.path.join(".","job-templates",w)
+                        with codecs.open(fullPath,"r",encoding="utf-8") as workflow_file:
+                            text=workflow_file.read()
+                            api.import_workflow(text,application.workspace)
+            except Exception as ex:
+                application.is_invalid=True
+                application.invalid_reason=ex
 
 def create_secrets(docker:Docker):
     secret_files=['idp-admin-password','jobnode-client-secret','license.lic','server-ssl-cert.pfx','venari-CA.crt']
@@ -142,6 +147,11 @@ def run(testconfig,swarmhost:str,tls:bool,importonly:bool,master:str):
     if(master):
         config.master_node=master
     import_templates(config)    
+
+    #print any errors if tests are not valid.
+    for t in config.tests:
+        if(t.is_invalid):
+            print(f"Test {t.name} is invalid. Reason: {t.invalid_reason}")
 
 if __name__ == '__main__':
     cli()
