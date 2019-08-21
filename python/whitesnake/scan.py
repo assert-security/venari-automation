@@ -40,7 +40,7 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
-def get_template(test_def:ScanTestDefinition,template_path)->dict:
+def get_template(template_file: str, template_path)->dict:
     '''
     Takes a ScanTestDefintion and changes the start url in the specified job template to match what is in the test.
 
@@ -49,7 +49,7 @@ def get_template(test_def:ScanTestDefinition,template_path)->dict:
     '''
 
     #try to open our template file
-    fullPath=os.path.join(template_path,test_def.template_file)
+    fullPath=os.path.join(template_path, template_file)
     data=None
     with open(fullPath) as template_file:
         data=template_file.read()
@@ -76,9 +76,14 @@ def import_templates(config: Configuration):
         #test:ScanTestDefinition= next (x for x in config.tests if x.name== 'wavesep concurrent')
         if (application):
             try:
-                template = get_template(application,"./job-templates")
-                #Import the job template and remap the template's endpoint/hosts to what's in our test.
+                
+                template = get_template(application.template_file, "./job-templates")
+                retest_template = get_template(application.retest_template_file, "./job-templates")
+                
+                #Import the job templates and remap the template's endpoint/hosts to what's in our test.
                 api.import_template(template, application.workspace, application.endpoint)
+                api.import_template(retest_template, application.workspace, application.endpoint)
+                
                 #now import the workflows
                 if(application.workflows):
                     for w in application.workflows:
@@ -87,6 +92,7 @@ def import_templates(config: Configuration):
                             text=workflow_file.read()
                             api.import_workflow(text,application.workspace)
             except Exception as ex:
+                type, value, traceback = sys.exc_info()
                 application.is_invalid=True
                 application.invalid_reason=ex
 

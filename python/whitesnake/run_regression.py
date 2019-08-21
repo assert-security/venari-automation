@@ -35,23 +35,24 @@ if __name__ == '__main__':
         # start/enqueue scan jobs
         test_items = tester.start_scans(config)
 
-        # monitor progress
+        # monitor job progress
         regression_result = tester.wait_for_result(test_items, config)
 
         # generate report
         generator = ReportGenerator()
         report = generator.generate_report(regression_result)
         print(report)
+        generator.write_report('scan-compare-report', report)
 
-        # write the report as a text file
-        output_dir = f'{os.getcwd()}/reports'.replace('\\', '/')
-        ensure_output_dir = file_utils.ensure_empty_dir(output_dir)
-        if (not ensure_output_dir):
-            print('failed to ensure empty output directory')
-        else:
-            dt_text = datetime.datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
-            file_path = f'{output_dir}/scan-compare-report-{dt_text}.txt'
-            with open(file_path, mode='w+') as outfile:
-                outfile.write(report)
+        # batch retest the scans that failed with missing findings
+        retest_items = tester.start_batch_retest_for_failed_jobs(test_items)
+
+        # monitor progress of retest jobs
+        retest_result = tester.wait_for_retest_result(retest_items)
+
+        # generate retest report
+        report = generator.generate_report(retest_result)
+        print(report)
+        generator.write_report('retest-compare-report', report)
 
 

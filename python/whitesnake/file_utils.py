@@ -17,3 +17,12 @@ def ensure_empty_dir(dir: str):
     files = glob.glob(path)
     return True if (len(files) == 0) else False
 
+
+def ensure_dir(dir: str):
+    if (not os.path.exists(dir)):
+        os.mkdir(dir)
+        if (not os.path.exists(dir)):
+            return False
+
+    return True
+

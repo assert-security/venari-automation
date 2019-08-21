@@ -29,6 +29,7 @@ class ScanTestDefinition(object):
                  template_name:str=None,
                  endpoint:str=None,
                  template_file:str=None,
+                 retest_template_file:str=None,
                  test_url:str=None,
                  test_url_content_pattern:str=None,
                  workflows:List[str]=None,
@@ -39,6 +40,7 @@ class ScanTestDefinition(object):
         self.workspace=workspace
         self.endpoint=endpoint
         self.template_file=template_file
+        self.retest_template_file = retest_template_file
         self.template_name=template_name
         self.test_url = test_url
         self.test_url_content_pattern = test_url_content_pattern

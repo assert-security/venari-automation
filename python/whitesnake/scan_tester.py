@@ -304,6 +304,31 @@ class ScanTester(object):
         for test in tests_with_jobs:
             test_table[test.job.id] = test
 
+        self.wait_for_jobs_to_complete(test_table)
+
+        span = datetime.datetime.now() - start
+        return RegressionExecResult(span.total_seconds(), error_message, tests)
+
+
+    def wait_for_retest_result(self, tests: List[TestData]) -> RegressionExecResult:
+
+        start = datetime.datetime.now()
+        error_message = None
+
+        # maps job id to test item        
+        test_table = {} 
+        
+        for test in tests:
+            test_table[test.job.id] = test
+
+        self.wait_for_jobs_to_complete(test_table)
+
+        span = datetime.datetime.now() - start
+        return RegressionExecResult(span.total_seconds(), error_message, tests)
+
+
+    def wait_for_jobs_to_complete(self, test_table):
+
         # monitor the jobs in the table until all are complete or other abort conditions are hit
         while (True):
     
@@ -347,8 +372,6 @@ class ScanTester(object):
 
             time.sleep(10)
 
-        span = datetime.datetime.now() - start
-        return RegressionExecResult(span.total_seconds(), error_message, tests)
 
 
     def format_exception(self, type, value, traceback):
@@ -376,6 +399,36 @@ class ScanTester(object):
         assigned_to = job.assigned_to
         compare_result = self._api.get_job_compare_data(job_unique_id, assigned_to, workspace_db_name)
         return compare_result
+
+
+    def start_batch_retest_for_failed_jobs(self, test_items: List[TestData])-> List[TestData] :
+        retests: List[ScanTestDefinition] = []
+        for test in test_items:
+            if (self.is_failed_job(test)):
+                workspace_name = test.test_definition.workspace
+                template_name = 'Findings Validation'
+                job_name = f'{workspace_name} {template_name}'
+                start_response = self._api.start_job_fromtemplate(job_name, workspace_name, template_name)
+                if (start_response.error or start_response.job == None):
+                    test_exec_result = TestExecResult.ScanStartFail
+                else:
+                    # overwrite everything except the test definition
+                    test.job = start_response.job
+                    test.scan_start_data = start_response
+                    test.test_exec_result = None
+                    test.test_exec_error_message = None
+                    test.scan_processed = False
+                    test.compare_result = None
+                    retests.append(test)
+
+        return retests
+        
+
+    def is_failed_job(self, test: TestData) -> bool:
+            return (test.test_exec_result == TestExecResult.ScanCompleted and
+                    test.compare_result and
+                    (test.compare_result.comparison == JobComparison.MissingFindings or
+                     test.compare_result.comparison == JobComparison.MissingAndExtraFindings))
 
 
     def get_job_status(self, job_id: int) -> JobStatus:

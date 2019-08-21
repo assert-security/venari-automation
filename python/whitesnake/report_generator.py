@@ -1,6 +1,16 @@
 from venariapi.models import *
 from models import TestData, RegressionExecResult, TestExecResult
 from scan import Configuration, ScanTestDefinition
+import sys
+import os
+import site_utils
+import file_utils
+import time
+import datetime
+from scan import *
+from pathlib import Path
+import sys
+
 
 class ReportGenerator(object):
 
@@ -42,7 +52,7 @@ class ReportGenerator(object):
             for test in regression_result.tests:
                 try:
                     report += '********************************************************************************\n'
-                    report += f'TARGET:              {test.test_definition.name} ({test.test_definition.template_name})\n'
+                    report += f'TARGET:              {test.test_definition.name}\n'
                     report += f'MAX MISSING:         {test.test_definition.max_missing_findings}\n'
                     if (test.scan_start_data.job.duration):
                         report += f'DURATION:            {test.scan_start_data.job.duration}\n\n'
@@ -84,6 +94,18 @@ class ReportGenerator(object):
             return (False, message)
 
         return (True, "")
+
+
+    def write_report(self, report_name: str, report: str):
+        output_dir = f'{os.getcwd()}/reports'.replace('\\', '/')
+        ensure_output_dir = file_utils.ensure_dir(output_dir)
+        if (not ensure_output_dir):
+            print('failed to ensure empty output directory')
+        else:
+            dt_text = datetime.datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
+            file_path = f'{output_dir}/{report_name}-{dt_text}.txt'
+            with open(file_path, mode='w+') as outfile:
+                outfile.write(report)
 
 
 
