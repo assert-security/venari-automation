@@ -9,7 +9,7 @@ import re
 from urllib.parse import urlparse,ParseResult
 import asyncio
 import subprocess
-from aiohttp import ClientSession
+from aiohttp import ClientSession,ClientConnectorError
 
 class Docker(object):
     def __init__(self,remote_host=None,useTls=False):
@@ -37,10 +37,14 @@ class Docker(object):
         #Killing the stack and immediately trying to start it again fails.
         for retry in range(3):  
             #now wait for services to come up.
-            proc=subprocess.run(f"docker {self.host_params} stack deploy -c docker-compose.yml --with-registry-auth whitesnake ")
+            cmdline=f"docker {self.host_params} stack deploy -c docker-compose.yml --with-registry-auth whitesnake "
+            logger.debug(f"running: {cmdline}")
+            proc=subprocess.run(cmdline)
             urls:List[str]=[]
             if proc.returncode ==0:
-                output:str=subprocess.check_output(f"docker {self.host_params} stack services whitesnake --format \"{{{{json .}}}}\"")
+                cmdline=f"docker {self.host_params} stack services whitesnake --format \"{{{{json .}}}}\""
+                logger.debug(f"running: {cmdline}")
+                output:str=subprocess.check_output(cmdline)
                 for l in output.splitlines():
                     od:dict=json.loads(l)
                     ports:str=od["Ports"]
@@ -62,6 +66,7 @@ class Docker(object):
 
                 loop=asyncio.get_event_loop()
                 loop.run_until_complete(self.wait_for_services(urls))
+                logger.debug("returning from deploy_stack()")
                 break
             else:
                 logger.warning("Retrying deploy")
@@ -69,23 +74,33 @@ class Docker(object):
 
     async def wait_for_services(self,svcs:List[str]):
         tasks = []
+        success:bool=False
+        #session will auto close when the with goes out of scope.
         async with ClientSession() as session:    
             for retry in range(10):
-                try:
-                    for svc in svcs:
-                        name=svc["name"]
-                        url=svc["url"]
-                        tasks.append(
-                            self.fetch_http_status_code(url,session)
-                        )
-                    result=await asyncio.gather(*tasks)
-                    logger.debug(result)
-                    break
-                except Exception as e:
-                    logger.warning(f"All services did not respond. Retrying: {e}")
+                #try:
+                for svc in svcs:
+                    name=svc["name"]
+                    url=svc["url"]
+                    tasks.append(
+                        self.fetch_http_status_code(url,session)
+                    )
+
+                results=await asyncio.gather(*tasks,return_exceptions=True)
+                logger.debug(results)
+                if(any(f  for f in results if isinstance(f,Exception))):
+                    logger.warning(f"All services did not respond. Retrying. Attempt={retry}")
                     time.sleep(5)
                     tasks.clear()
-            await session.close()
+                else:
+                    logger.debug(results)
+                    success=True
+                    break
+        logger.debug(f"Services up after {retry} attempts were made.")
+        if(success):
+            logger.info(f"All services are up")
+        else:
+            logger.error(f"All services did not start after the alloted time.")
 
     async def fetch_http_status_code(self,url: str, session: ClientSession, **kwargs) -> int:
         """GET request wrapper to fetch page HTML.
