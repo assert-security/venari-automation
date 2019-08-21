@@ -21,6 +21,8 @@ import asyncio
 import aiohttp
 from aiohttp import ClientSession
 import logging
+from docker import Docker
+
 logger = logging.getLogger('testdeployment')
 logger.setLevel(logging.DEBUG)
 # create console handler and set level to debug
@@ -35,6 +37,7 @@ ch.setFormatter(formatter)
 
 # add ch to logger
 logger.addHandler(ch)
+
 
 def get_template(test_def:ScanTestDefinition,template_path)->dict:
     '''
@@ -62,6 +65,9 @@ def get_config(testconfig_path):
     
 def import_templates(config: Configuration):
     auth = creds.load_credentials(config.master_node)
+    if(auth is None):
+        raise Exception(f"No stored credentials found for master url \"{config.master_node}\"")
+    logger.debug(auth)
     #we are authenticated at this point.
     api = VenariApi(auth,config.master_node)
 
@@ -79,32 +85,14 @@ def import_templates(config: Configuration):
                         text=workflow_file.read()
                         api.import_workflow(text,application.workspace)
 
-def create_secrets():
+def create_secrets(docker:Docker):
     secret_files=['idp-admin-password','jobnode-client-secret','license.lic','server-ssl-cert.pfx','venari-CA.crt']
     secret_files=[os.path.join(Path.home(),'assert-security/secrets',x) for x in secret_files]
-    for f in secret_files:
-        sname=os.path.basename(f)
-        if subprocess.run(f"docker secret inspect {sname}",stdout=subprocess.PIPE,stderr=subprocess.PIPE).returncode !=0:
-            proc=subprocess.run(f"docker secret create {sname} {f}")
+    docker.create_secrets_from_files(secret_files)
     logger.debug(secret_files)
 
-def shutdown_stack():
-    subprocess.run("docker stack rm whitesnake")
-    time.sleep(5)
 
-async def fetch_http_status_code(url: str, session: ClientSession, **kwargs) -> int:
-    """GET request wrapper to fetch page HTML.
-
-    kwargs are passed to `session.request()`.
-    """
-    logger.debug(f"fetching: {url}")
-    resp = await session.request(method="GET", url=url, **kwargs)
-    resp.raise_for_status()
-    #html = await resp.text()
-    logger.debug(f"Got response {resp.status} for URL: {url}")
-    return (url,resp.status)
-
-def build_stack(swarm_hostname:str,config_path:str,tests:List[ScanTestDefinition],service_basename="whitesnake"):
+def build_stack(docker:Docker,swarm_hostname:str,config_path:str,tests:List[ScanTestDefinition],service_basename="whitesnake"):
     test_map={x.name : x for x in tests}
     #Take all the stack_files from the tests, plus a few extra, and create docker-compose params to specify each file.
     #Each file will be specified using a full path.
@@ -116,7 +104,10 @@ def build_stack(swarm_hostname:str,config_path:str,tests:List[ScanTestDefinition
     args=' '.join(stack_files)
     args="docker-compose " + args
     with open("docker-compose.yml",'wb') as cfile:
-        proc=subprocess.run(args,stdout=subprocess.PIPE)
+        newenv=os.environ
+        newenv["IDP_EXTERNAL_URL"]="https://master.assertsecurity.io:9002"
+        newenv["MASTER_EXTERNAL_PORT"]="9013"
+        proc=subprocess.run(args,stdout=subprocess.PIPE,env=newenv)
         if(proc.returncode == 0):
             cfile.write(proc.stdout)
         else:
@@ -124,72 +115,33 @@ def build_stack(swarm_hostname:str,config_path:str,tests:List[ScanTestDefinition
             exit(1)
         
     logger.debug("Deploying stack")
-    #Not sure why this is necessary. For some reason killing the stack and immediately trying to start it complains about not being able to create the network.
-    for retry in range(3):
-        #now wait for services to come up.
-        proc=subprocess.run("docker stack deploy -c docker-compose.yml --with-registry-auth whitesnake ")
-        urls:List[str]=[]
-        if proc.returncode ==0:
-            output:str=subprocess.check_output('docker stack services whitesnake --format "{{json .}}"')
-            for l in output.splitlines():
-                od:dict=json.loads(l)
-                ports:str=od["Ports"]
-                name:str=od["Name"]
-                logger.debug(f"Name={name},port={ports}")
-                if(ports):
-                    port=int(re.search(r'\d+', ports).group())
-                    # we have the port and the test name. Next, we need to build the external url from
-                    # We need to build a "health" url by substituting the test's hostname with the swarmmanager
-                    # hostname and the port assigned by docker.
-                    name=name.replace(service_basename+"_","")
-                    if(not name in test_map):
-                        raise Exception(f"could not find test name that matches docker service name {name}")
-                    testUrl:ParseResult=urlparse(test_map[name].endpoint)
-                    ping_endpoint=f"{testUrl.scheme}://{swarm_hostname}:{port}{testUrl.path}{testUrl.query}"
-                    urls.append({"name":name,"url":ping_endpoint})
-                else:
-                    logger.warning(f"{name} does not have a published port.")
-
-            loop=asyncio.get_event_loop()
-            loop.run_until_complete(wait_for_services(urls))
-            break
-        else:
-            logger.warning("Retrying deploy")
-            time.sleep(5)
-            
-async def wait_for_services(svcs:List[str]):
-    tasks = []
-    async with ClientSession() as session:    
-        for retry in range(10):
-            try:
-                for svc in svcs:
-                    name=svc["name"]
-                    url=svc["url"]
-                    tasks.append(
-                        fetch_http_status_code(url,session)
-                    )
-                result=await asyncio.gather(*tasks)
-                logger.debug(result)
-                break
-            except Exception as e:
-                logger.warning(f"All services did not respond. Retrying: {e}")
-                time.sleep(5)
-                tasks.clear()
-        await session.close()
+    docker.deploy_stack("docker-compose.yml",service_basename,test_map,swarm_hostname)
+               
 @click.group()
 def cli():
     pass
 
 @cli.command()
 @click.option('--testconfig',nargs=1,required=True)
-@click.option('--swarmhost',nargs=1,default="host.docker.internal")
-def run(testconfig,swarmhost:str):
-    shutdown_stack()
-    create_secrets()
+@click.option('--swarmhost',nargs=1,default="orion.corp.assertsecurity.io")
+@click.option('--tls/--no_tls')
+@click.option('--importonly/--no_importonly')
+@click.option('--master',nargs=1)
+def run(testconfig,swarmhost:str,tls:bool,importonly:bool,master:str):
     config_path=os.path.dirname(testconfig)
     config = get_config(testconfig)
-    build_stack(swarmhost,config_path,config.tests)
 
+    if(not importonly):
+        swarm_endpoint=swarmhost
+        if(tls):
+            swarm_endpoint+=":2376"
+        docker=Docker(swarm_endpoint,tls)
+        docker.shutdown_stack("whitesnake")
+        create_secrets(docker)
+        build_stack(docker,swarmhost,config_path,config.tests)
+    if(master):
+        config.master_node=master
+    import_templates(config)    
 
 if __name__ == '__main__':
     cli()

@@ -7,3 +7,6 @@ python/whitesnake/.vscode/
 python/whitesnake/docker-compose.yml
 python/whitesnake/reports/
 python/whitesnake/scan-exports/
+.vscode/settings.json
+python/venari-client/venariapi/.vscode/settings.json
+
