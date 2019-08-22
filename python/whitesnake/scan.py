@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List
 from configuration import Configuration,ScanTestDefinition
 from venariapi.models import JobStatus
-from venariapi import VenariAuth,VenariApi
+from venariapi import VenariAuth,VenariApi,VenariRequestor
 import venariapi.examples.credentials as creds
 import yaml
 import os
@@ -98,51 +98,46 @@ def import_templates(config: Configuration):
                 application.is_invalid=True
                 application.invalid_reason=ex
 
-def create_secrets(docker:Docker):
+def create_secrets(docker:Docker,secrets_folder:str=None):
+    if(secrets_folder is None):
+        secrets_folder=os.path.join(Path.home(),'assert-security/secrets')
+
     secret_files=['idp-admin-password','jobnode-client-secret','license.lic','server-ssl-cert.pfx','venari-CA.crt']
-    secret_files=[os.path.join(Path.home(),'assert-security/secrets',x) for x in secret_files]
+    secret_files=[os.path.join(secrets_folder,x) for x in secret_files]
     docker.create_secrets_from_files(secret_files)
     logger.debug(secret_files)
-
-
-def build_stack(docker:Docker,swarm_hostname:str,config_path:str,tests:List[ScanTestDefinition],service_basename="whitesnake"):
-    test_map={x.name : x for x in tests}
-    #Take all the stack_files from the tests, plus a few extra, and create docker-compose params to specify each file.
-    #Each file will be specified using a full path.
-    stack_files=[[x.stack_file for x in tests if(x.stack_file)],['local-network.yml','venari-stack.yml'] ]
-    stack_files= [i for i in chain.from_iterable(stack_files)]
-    stack_files=["-f "+os.path.join(config_path,x)  for x in stack_files]
-    #Run the 'config' command so docker-compose will create a single yml file with all of our services/networks etc.
-    stack_files.append('config')
-    args=' '.join(stack_files)
-    args="docker-compose " + args
-    with open("docker-compose.yml",'wb') as cfile:
-        newenv=os.environ
-        newenv["IDP_EXTERNAL_URL"]="https://gemini.assertsecurity.io:9002"
-        newenv["MASTER_EXTERNAL_PORT"]="9013"
-        proc=subprocess.run(args,stdout=subprocess.PIPE,env=newenv)
-        if(proc.returncode == 0):
-            cfile.write(proc.stdout)
-        else:
-            print(proc.stdout)
-            exit(1)
-        
-    logger.debug("Deploying stack")
-    docker.deploy_stack("docker-compose.yml",service_basename,test_map,swarm_hostname)
                
 @click.group()
 def cli():
     pass
 
 @cli.command()
-@click.option('--testconfig',nargs=1,required=True)
-@click.option('--swarmhost',nargs=1,default="orion.corp.assertsecurity.io")
-@click.option('--tls/--no_tls')
+@click.option('--testconfig',nargs=1,required=True,help="Path to whitesnake configuration file")
+@click.option('--swarmhost',nargs=1,default="host.docker.internal",help="swarm host name")
+@click.option('--tls/--no_tls',help="Use TLS authentication when talking to the docker engine")
 @click.option('--importonly/--no_importonly')
-@click.option('--master',nargs=1)
-def run(testconfig,swarmhost:str,tls:bool,importonly:bool,master:str):
+@click.option('--master',nargs=1,default="https://host.docker.internal:9000")
+@click.option('--idp_url',nargs=1,default="https://host.docker.internal:9002")
+#@click.option('--net_external/--no_net_external',help="Use an external network instead of creating a new one.")
+@click.option('--node_count',default=1,help="Number of job node containers to start.")
+@click.option('--secrets_folder',default=None)
+@click.option('--verify_ssl/--no_verify_ssl',default=True)
+@click.option('--swarm_master_hostname',default="docker-desktop")
+@click.option('--master_alias',default='venarimaster',help="the hostname or fqdn of the master node on the overlay network. FQDN is needed when not using self-signed certs.")
+def run(testconfig,swarmhost:str,tls:bool,importonly:bool,master:str,idp_url:str,node_count:int,secrets_folder:str,verify_ssl:bool,swarm_master_hostname:str,master_alias:str):
+    VenariRequestor.verify_ssl=verify_ssl
     config_path=os.path.dirname(testconfig)
     config = get_config(testconfig)
+    master_port=urlparse(master).port    
+    docker_env={
+        "IDP_EXTERNAL_URL":idp_url,
+        "MASTER_EXTERNAL_PORT":str(master_port),
+        # "NETWORK_EXTERNAL":str(net_external),
+        "NODE_COUNT":str(node_count),
+        "MASTER_SWARM_NODE_HOSTNAME":swarm_master_hostname,
+        "MASTER_ALIAS":master_alias
+    }
+    logger.debug(f"docker_env: {docker_env}")
 
     if(not importonly):
         swarm_endpoint=swarmhost
@@ -150,8 +145,8 @@ def run(testconfig,swarmhost:str,tls:bool,importonly:bool,master:str):
             swarm_endpoint+=":2376"
         docker=Docker(swarm_endpoint,tls)
         docker.shutdown_stack("whitesnake")
-        create_secrets(docker)
-        build_stack(docker,swarmhost,config_path,config.tests)
+        create_secrets(docker,secrets_folder)
+        docker.build_stack(swarmhost,config_path,config.tests,docker_env)
 
     if(master):
         config.master_node=master

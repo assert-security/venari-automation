@@ -10,13 +10,19 @@ from urllib.parse import urlparse,ParseResult
 import asyncio
 import subprocess
 from aiohttp import ClientSession,ClientConnectorError
+from itertools import chain
+from configuration import ScanTestDefinition
 
 class Docker(object):
     def __init__(self,remote_host=None,useTls=False):
-        self.host_params=f"-H {remote_host}"
+        self.host_params=""
+        if(remote_host != "host.docker.internal"):
+            self.host_params=f"-H {remote_host}"
+
         if(useTls):
             self.host_params=f"{self.host_params} --tlsverify"
-        print(f"docker ctor: {self.host_params}")
+
+        logger.debug(f"Docker __nit__: {self.host_params}")
     
     def create_secrets_from_files(self,files:List[str]):
         for f in files:
@@ -34,7 +40,7 @@ class Docker(object):
         time.sleep(5)
 
     def deploy_stack(self,filename:str,service_basename:str,test_map:dict,swarm_hostname:str):
-        #Killing the stack and immediately trying to start it again fails.
+        #Make sure all the images are present.
         for retry in range(3):  
             #now wait for services to come up.
             cmdline=f"docker {self.host_params} stack deploy -c docker-compose.yml --with-registry-auth whitesnake "
@@ -101,6 +107,31 @@ class Docker(object):
             logger.info(f"All services are up")
         else:
             logger.error(f"All services did not start after the alloted time.")
+
+    def build_stack(self,swarm_hostname:str,config_path:str,tests:List[ScanTestDefinition],docker_env:dict,service_basename="whitesnake"):
+        
+        test_map={x.name : x for x in tests}
+        #Take all the stack_files from the tests, plus a few extra, and create docker-compose params to specify each file.
+        #Each file will be specified using a full path.
+        stack_files=[[x.stack_file for x in tests if(x.stack_file)],['venari-stack.yml'] ]
+        stack_files= [i for i in chain.from_iterable(stack_files)]
+        stack_files=["-f "+os.path.join(config_path,x)  for x in stack_files]
+        #Run the 'config' command so docker-compose will create a single yml file with all of our services/networks etc.
+        stack_files.append('config')
+        args=' '.join(stack_files)
+        args="docker-compose " + args
+        with open("docker-compose.yml",'wb') as cfile:
+            newenv=os.environ
+            newenv.update(docker_env)
+            proc=subprocess.run(args,stdout=subprocess.PIPE,env=newenv)
+            if(proc.returncode == 0):
+                cfile.write(proc.stdout)
+            else:
+                print(proc.stdout)
+                exit(1)
+            
+        logger.debug("Deploying stack")
+        self.deploy_stack("docker-compose.yml",service_basename,test_map,swarm_hostname)            
 
     async def fetch_http_status_code(self,url: str, session: ClientSession, **kwargs) -> int:
         """GET request wrapper to fetch page HTML.
