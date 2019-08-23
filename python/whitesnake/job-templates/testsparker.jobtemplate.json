@@ -1,0 +1,25 @@
+{
+    "WorkspaceName": "Testsparker",
+    "JobTemplateName": "Authenticated Exploit",
+    "SettingsType": "ExploiterJobSettingsDbObject",
+    "SettingsTypeDisplayName": "Exploiter",
+    "Patch": [
+        {
+            "value": "alan@turing.com",
+            "path": "/WorkflowSettings/AutoLoginUserName",
+            "op": "replace"
+        },
+        {
+            "value": "theturingtest",
+            "path": "/WorkflowSettings/AutoLoginPassword",
+            "op": "replace"
+        },
+        {
+            "value": [
+                "http://aspnet.testsparker.com"
+            ],
+            "path": "/ResourceScope/SeedResources/StartUrls",
+            "op": "replace"
+        }
+    ]
+}

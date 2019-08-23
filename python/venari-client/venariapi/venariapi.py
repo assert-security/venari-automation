@@ -491,11 +491,11 @@ class VenariApi(object):
     def get_job_compare_data(self, 
                              comparison_job_unique_id:str, 
                              assigned_to: str, 
-                             workspace_unique_id: str) -> models.JobCompareResult:
+                             workspace_db_name: str) -> models.JobCompareResult:
         data = dict({
             "JobUniqueID": comparison_job_unique_id,
             "AssignedTo": assigned_to,
-            "WorkspaceDbName": workspace_unique_id
+            "WorkspaceDbName": workspace_db_name
         })
         response = self._request("POST",'/api/qa/get/findings/comparison', json = data)
         if (response.hasData()):
