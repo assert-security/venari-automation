@@ -29,6 +29,10 @@ import base64
 import os
 import logging
 logger = logging.getLogger('venariapi')
+import asyncio
+from typing import List
+from aiohttp import ClientSession,ClientConnectorError
+
 
 class VenariApi(object):
     def __init__(self, auth, api_url, verify_ssl=True, timeout=60, user_agent=None,
@@ -528,3 +532,65 @@ class VenariApi(object):
     def dict_from_dbdata(self, db_data: models.DBData) -> dict:
         return dict({"DBID": db_data.db_id,
                      "DBType": db_data.db_type})
+
+    @staticmethod
+    async def verify_endpoints_are_up(endpoints:List[models.VerifyEndpointInfo],timeout=5,retry_count=3)->bool:
+        """Verifies that the supplied endpoints are up. 
+        
+        Arguments:      
+            urls {List[endpoints.VerifyEndpointInfo]} -- A List of VerifyEndpointInfo instances.
+            Redirects not currently supported.
+        
+        Returns:
+            No return value.
+        """
+        tasks = []
+        success:bool=False
+        #session will auto close when the with goes out of scope.
+        async with ClientSession() as session:    
+            for retry in range(1,retry_count+2,1):
+                for endpoint in endpoints:
+                    tasks.append(
+                        VenariApi.__test_endpoint__(endpoint,session,timeout)
+                    )
+                results=await asyncio.gather(*tasks,return_exceptions=True)
+                logger.debug(f"task results:")
+                #print(results)
+                logger.debug(results)
+                #if(any(f  for f in results if isinstance(f,Exception))):
+                if(any(f  for f in results if not f.is_up)):
+                    logger.warning(f"All services did not respond. Retrying. Attempt={retry}")
+                    tasks.clear()
+                else:
+                    logger.debug(results)
+                    success=True
+                    break
+        logger.debug(f"Detected sites are all  up after {retry} attempts were made.")
+        if(success):
+            logger.info(f"All sites are up")
+        else:
+            logger.error(f"Not all sites are available")
+        return success
+   
+    @staticmethod
+    async def __test_endpoint__(endpoint:models.VerifyEndpointInfo,session: ClientSession,timeout:int, **kwargs) -> int:
+        """GET request wrapper to fetch page HTML.
+
+        kwargs are passed to `session.request()`.
+        """
+        try:
+            logger.debug(f"fetching: {endpoint.url}")
+            endpoint.is_up=False
+            endpoint.failed_reason=None
+            resp = await session.request(method="GET", url=endpoint.url,timeout=timeout, **kwargs)
+            resp.raise_for_status()
+            #html = await resp.text()
+            logger.debug(f"Got response {resp.status} for URL: {endpoint.url}")
+            endpoint.is_up=True
+            endpoint.http_status_code=resp.status
+            return endpoint
+        except Exception as ex:
+            endpoint.is_up=False
+            endpoint.http_status_code=-1
+            endpoint.failed_reason=str(ex)
+            return endpoint

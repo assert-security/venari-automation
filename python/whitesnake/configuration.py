@@ -30,8 +30,8 @@ class ScanTestDefinition(object):
                  endpoint:str=None,
                  template_file:str=None,
                  retest_template_file:str=None,
-                 test_url:str=None,
-                 test_url_content_pattern:str=None,
+                 test_path:str=None,
+                 test_content_pattern:str=None,
                  workflows:List[str]=None,
                  stack_file:str=None):
         
@@ -42,17 +42,20 @@ class ScanTestDefinition(object):
         self.template_file=template_file
         self.retest_template_file = retest_template_file
         self.template_name=template_name
-        self.test_url = test_url
-        self.test_url_content_pattern = test_url_content_pattern
+        self.test_path = test_path
+        self.test_content_pattern = test_content_pattern
         self.workflows=workflows
         self.expected_findings_file = expected_findings_file
         self.stack_file=stack_file
-        self.is_invalid=False
+        self.is_valid=False
         self.invalid_reason=None
 
     @classmethod
     def from_json(cls, json_data: dict):
          return cls(**json_data)
+
+    def __repr__(self):
+        return f"{{name:{self.name},endpoint:{self.endpoint},workspace:{self.workspace},is_valid:{self.is_valid},invalid_reason:{self.invalid_reason}}}"         
 
 class Configuration(object):
     '''

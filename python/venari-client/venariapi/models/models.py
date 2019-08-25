@@ -198,3 +198,15 @@ class JobStartResponse(object):
         else:
             return cls(None,data["Message"],False)
 
+
+class VerifyEndpointInfo(object):
+    def __init__(self,name:str,url:str,search_text:str=None):
+        self.name=name
+        self.url=url
+        self.search_text=search_text
+        self.is_up=False
+        self.http_status_code=0
+        self.failed_reason=None
+
+    def __repr__(self):
+        return f"{{name:{self.name},url:{self.url},is_up:{self.is_up},failed_reason:{self.failed_reason}}}"

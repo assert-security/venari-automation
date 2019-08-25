@@ -8,6 +8,25 @@ from venariapi import  VenariApi,VenariAuth,RequestHelper
 import sys
 import json
 import venariapi.examples.credentials as creds
+import venariapi.models as models
+import asyncio
+import logging
+logger = logging.getLogger('venariapi')
+
+logger.setLevel(logging.DEBUG)
+# create console handler and set level to debug
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+
+# create formatter
+formatter = logging.Formatter('%(levelname)s: %(message)s')
+
+# add formatter to ch
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
+
 
 class CommonParams:
     url:str=None
@@ -149,7 +168,23 @@ def list_template(ctx,workspace):
           print(f"{t.name:<25} {t.id}")
           pass
 
+@click.group()
+def testgroup():
+     pass     
 
+@testgroup.command()
+def testsite():
+     asyncio.run(main())
+     pass
+
+async def main():
+    await VenariApi.verify_endpoints_are_up([
+        models.VerifyEndpointInfo("site1","http://www.microsoft.com"),
+        models.VerifyEndpointInfo("site2","http://wsww.google.com")],
+    timeout=2,retry_count=1)
+    
 if __name__ == '__main__':
-     print(sys.argv[1:])
+     # print(sys.argv[1:])
      cli()
+     #testsite()
+

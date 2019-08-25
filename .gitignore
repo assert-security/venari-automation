@@ -10,3 +10,4 @@ python/whitesnake/scan-exports/
 .vscode/settings.json
 python/venari-client/venariapi/.vscode/settings.json
 
+.vscode/.ropeproject/objectdb
