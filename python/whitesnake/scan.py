@@ -115,7 +115,7 @@ def import_templates(config: Configuration):
                 type, value, tb = sys.exc_info()
                 application.is_valid=False
                 application.invalid_reason=str(ex)
-                traceback.print_tb(tb, limit=1, file=sys.stdout)
+                traceback.print_tb(tb)
                 
 
 def create_secrets(docker:Docker,secrets_folder:str=None):
@@ -200,6 +200,7 @@ def cli():
 @click.option('--verify_ssl/--no_verify_ssl',default=True)
 @click.option('--swarm_master_hostname',default="docker-desktop")
 @click.option('--master_alias',default='venarimaster',help="the hostname or fqdn of the master node on the overlay network. FQDN is needed when not using self-signed certs.")
+@click.option('--skip_deploy/--deploy')
 def run(
         testconfig,
         swarmhost:str,
@@ -212,7 +213,8 @@ def run(
         verify_ssl:bool,
         swarm_master_hostname:str,
         master_alias:str,
-        farm_only:bool
+        farm_only:bool,
+        skip_deploy: bool,
     ):
     VenariRequestor.verify_ssl=verify_ssl
     config_path=os.path.dirname(testconfig)
@@ -228,7 +230,7 @@ def run(
     }
     logger.debug(f"docker_env: {docker_env}")
 
-    if(not importonly):
+    if(not importonly and not skip_deploy):
         swarm_endpoint=swarmhost
         if(tls):
             swarm_endpoint+=":2376"
@@ -246,7 +248,7 @@ def run(
     if(master):
          config.master_node=master
     
-    if(not farm_only):
+    if(not farm_only and not skip_deploy):
         import_templates(config)    
 
     #print any errors if tests are not valid.
@@ -255,6 +257,8 @@ def run(
             logger.warning(f"Test {t.name} is INVALID. Reason: {t.invalid_reason}")
         else:
             logger.info(f"Test {t.name} is VALID")
+
+    # TODO - hook up regression runner here
 
 @cli.command()
 @click.option('--dockerhost',required=False,help="hostname of docker engine. Omit if using local engine.")

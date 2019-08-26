@@ -302,8 +302,8 @@ class VenariApi(object):
         params:dict={
             "WorkflowText":workflow_text,
             "DBData":{
-                "DBID":wobj.db_data.id,
-                "DBType":wobj.db_data.type
+                "DBID":wobj.db_data.db_id,
+                "DBType":wobj.db_data.db_type
             }
         }
         resp=self._request("POST",'/api/workflow/save',json=params)
@@ -561,11 +561,11 @@ class VenariApi(object):
                 if(any(f  for f in results if not f.is_up)):
                     logger.warning(f"All services did not respond. Retrying. Attempt={retry}")
                     tasks.clear()
+                    time.sleep(timeout)
                 else:
                     logger.debug(results)
                     success=True
                     break
-        logger.debug(f"Detected sites are all  up after {retry} attempts were made.")
         if(success):
             logger.info(f"All sites are up")
         else:

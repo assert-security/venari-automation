@@ -57,7 +57,7 @@ class ReportGenerator(object):
                     if (test.scan_start_data.job.duration):
                         report += f'DURATION:            {test.scan_start_data.job.duration}\n\n'
 
-                    report += f'BASELINE COMPARISON: {str(test.compare_result.comparison)}\n'
+                    report += f'BASELINE COMPARISON: {test.compare_result.comparison}\n'
                     report += '********************************************************************************\n\n'
                     display_text = test.compare_result.display_details.replace('\r\n','\n')
                     report += f'{display_text}\n'

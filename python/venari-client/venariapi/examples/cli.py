@@ -133,7 +133,7 @@ def list_workspace(ctx,name):
      
      print(f"{'Name':10} {'Id':3} {'Db Id':36} {'Db Type':2}")
      for w in workspaces:
-          print(f"{w.name:<10} {w.id:<3} {w.db_data.id:<36} {w.db_data.type:<2}")
+          print(f"{w.name:<10} {w.id:<3} {w.db_data.db_id:<36} {w.db_data.db_type:<2}")
 
 
 @cli.group()
