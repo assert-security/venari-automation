@@ -87,7 +87,10 @@ class JobQuery(VenariQuery):
 
     def data(self)->Job:
         curItem=self.get_current_item()
-        return Job.from_data(curItem,self.workspaces[curItem["WorkspaceID"]])
+        workspaceID = curItem["WorkspaceID"]
+        print (workspaceID)
+        workspace = self.workspaces[workspaceID]
+        return Job.from_data(curItem, workspace)
 
 class FindingQuery(VenariQuery):
     def __init__(self,requestor:VenariRequestor,props:dict):
