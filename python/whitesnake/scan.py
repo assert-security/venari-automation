@@ -141,6 +141,9 @@ class WhitesnakeConfig(object):
         lastExitCode =proc.returncode
         return lastExitCode
 
+    def login(self):
+        self.login_dockerhub()
+        self.login_registry()
 
     def encrypt(self,key:str,text:str)->str:
         cipher_suite = Fernet(key.encode())
@@ -329,7 +332,8 @@ def run(
         key=encrypt_key
 
     config=WhitesnakeConfig.load(key)
-
+    config.login()
+    
     VenariRequestor.verify_ssl=verify_ssl
     config_path=os.path.dirname(testconfig)
     test_config = get_test_config(testconfig)
