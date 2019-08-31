@@ -24,6 +24,51 @@ import logging
 from docker import Docker,ExternalService
 import sys
 import traceback
+import getpass
+from cryptography.fernet import Fernet
+
+class WhitesnakeConfigIdp(object):
+    def __init__(
+        self,
+        token_endpoint:str,
+        client_secret:str,
+        client_id:str,
+        master_url:str,
+        extra:[]
+    ):
+        self.token_endpoint=token_endpoint
+        self.client_secret=client_secret
+        self.client_id=client_id
+        self.master_url=master_url
+        self.extra=extra
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(**data)
+
+
+class WhitesnakeConfig(object):
+    def __init__(
+        self,
+        registry_password:str,
+        registry_username:str,
+        docker_password:str,
+        docker_username:str,
+        idp
+    ):
+        self.registry_password=registry_password
+        self.registry_username=registry_username
+        self.docker_password=docker_password
+        self.docker_username=docker_username
+        if(isinstance(idp,dict)):
+            self.idp=WhitesnakeConfigIdp.from_dict(idp)
+        else:
+            self.ididp
+        
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(**data)
+
 
 logger = logging.getLogger('testdeployment')
 logger.setLevel(logging.DEBUG)
@@ -267,11 +312,17 @@ def run(
 @click.option('--node_hostname',default="docker-desktop",help="hostname of the swarm node to run the idp on.")
 @click.option('--secrets_folder',default=None)
 def idp(dockerhost:bool,tls:bool,stack_file:bool,node_hostname,secrets_folder:str):
+    deploy_idp(dockerhost,tls,stack_file,node_hostname,secrets_folder)
+
+def deploy_idp(dockerhost:bool,tls:bool,stack_file:bool,node_hostname:str,secrets_folder:str):
     host=dockerhost
     if(tls):
         host+=":2376"
     docker=Docker(host,tls)
     secrets_prefix="identityserver4_"
+
+    docker.delete_secrets(secrets_prefix)
+
     env={
         "IDP_EXTERNAL_PORT":"9002",
         "SN_PREFIX":secrets_prefix,
@@ -284,7 +335,165 @@ def idp(dockerhost:bool,tls:bool,stack_file:bool,node_hostname,secrets_folder:st
     docker.deploy_stack("idp")
     # idp uses a well-known location that's passed in, so verify connectivity to that.
 
+# @cli.command()
+# @click.option('--client_id',nargs=1,required=True)
+# @click.option('--extra_idp',multiple=True,nargs=2)
+# @click.option('--secret',nargs=1)
+# @click.option('--idp_url',nargs=1,required=True)
+# @click.option('--master_url',nargs=1,required=True)
+# @click.pass_context
+# def saveauth(master_url,idp_url,client_id,extra_idp,secret):
+#      try:
+#           if(not secret):
+#                secret=getpass.getpass(prompt='client secret:')
+#           token_endpoint=VenariApi.get_token_endpoint(idp_url.authority)
+#           VenariAuth.login(token_endpoint,secret,client_id,extra_idp)
+#           creds.save_credentials(master_url,token_endpoint,secret,client_id,extra_idp)
+#           print("login successful")
+#      except Exception as e:
+#           print(f"login failed: {repr(e)}")
+#           traceback.print_exc(file=sys.stdout)
+
+def get_docker(dockerhost:str)->Docker:
+    host=dockerhost
+    use_tls=False
+    if dockerhost is not None:
+        host+=":2376"
+        use_tls=True
+    docker=Docker(host,use_tls)
+    return docker
+
+def prompt_password(prompt:str,confirm:bool=False)->str:
+    done=False
+    password=None
+    confirm_pass=None
+    while not done:
+        password=getpass.getpass(prompt=prompt) 
+        print(f"pass={password}")
+        if confirm:
+            confirm_pass=getpass.getpass("Confirm:")
+            if password == confirm_pass and password is not None:
+                done=True
+            else:
+                print("Password mismatch.")
+                done=False
+        else:
+            done=True
+    if password == "":
+        return None
+    return password
+
+
+def get_or_generateKey()->str:
+    key_file=os.path.join(Path.home(),'assert-security/whitesnake.key')
+    key=None
+    if os.path.exists(key_file):
+        with open(key_file) as file:
+            key=file.read()
+            logger.debug("found key")
+    else:
+        key = Fernet.generate_key().decode()
+        with open(key_file,"w") as file:
+            logger.debug(f"wrote key to {key_file}")
+            file.write(key)
+    return key
+
+def encrypt(key:str,text:str)->str:
+    cipher_suite = Fernet(key.encode())
+    ciphered_text = cipher_suite.encrypt(text.encode())   #required to be bytes
+    return ciphered_text.decode()
+
+def decrypt(key:str,ciphered_text:str)->str:
+    cipher_suite = Fernet(key.encode())
+    unciphered_text = (cipher_suite.decrypt(ciphered_text.encode())).decode()
+    return unciphered_text
+
+
+@cli.command()
+@click.option('--dockerhost',required=False,help="hostname of docker engine. Omit if using local engine.")
+@click.option('--idp_stack',required=True)
+@click.option('--encrypt_key',default=None)
+def config(dockerhost:str,idp_stack,encrypt_key:str):
+    if encrypt_key is None:
+        key=get_or_generateKey()
+    else:
+        key=encrypt_key
+
+
+    docker=get_docker(dockerhost)
+    docker.shutdown_stack("idp")
+
+    settingsFile=os.path.join(Path.home(),'assert-security/whitesnake-auth.json')
+    config:WhitesnakeConfig=None
+    with open(settingsFile) as settings_file:
+        data=settings_file.read()
+        json_data=json.loads(data)
+        config=WhitesnakeConfig.from_dict(json_data) 
+
+    lastExitCode= 1
+
+    while lastExitCode != 0:
+        dockerUsername=config.docker_username
+        dockerPassword=config.docker_password
+        if dockerUsername == "" or dockerPassword =="":
+            if(dockerUsername ==""):
+                dockerUsername=input("Docker Hub username:")
+            dockerPassword=getpass.getpass(prompt='Docker Hub password:')    
+        else:
+            dockerPassword=decrypt(key,config.docker_password)
+        cmdLine=["docker","login","--username",dockerUsername,"--password-stdin"]
+        proc=subprocess.run(cmdLine,text=True,input=dockerPassword)
+        lastExitCode =proc.returncode
+
+    lastExitCode= 1
+    while lastExitCode != 0:
+        registryUsername=config.registry_username
+        registryPassword=config.registry_password
+        if registryPassword=="" or registryUsername=="":
+            if registryUsername=="":
+                registryUsername=input("Assert Registry Username:")
+            registryPassword=getpass.getpass(prompt='Assert Registry password:')    
+        else:
+            registryPassword=decrypt(key,config.registry_password)
+        cmdLine=["docker","login","registry.assertsecurity.io","--username",registryUsername,"--password-stdin"]
+        proc=subprocess.run(cmdLine,text=True,input=registryPassword)
+        lastExitCode =proc.returncode
+
+  
+
+    config.docker_password=encrypt(key,dockerPassword)
+    config.registry_password=encrypt(key,registryPassword)
+
+    json_data = json.dumps(config.__dict__, default=lambda o: o.__dict__, indent=4)
+    
+    logger.debug(json_data)
+    with open(settingsFile,'w') as settings_file:
+        settings_file.write(json_data)
+    
+    
+    deploy_idp(dockerhost,False,idp_stack,node_hostname="docker-desktop",secrets_folder=None)
+    for retry in range(10):
+        try:
+            if(retry > 1):
+                logger.warning("retrying")
+            else:
+                logger.info("connecting")
+            auth=VenariAuth.login(config.idp.token_endpoint,config.idp.client_secret,config.idp.client_id,config.idp.extra)
+            logger.info("success")
+            break
+        except Exception as e:
+            logger.error("failed")
+            time.sleep(3)
+    
+
+    
+
 
 if __name__ == '__main__':
-    cli()
+    try:
+        cli()
+    except Exception as e:
+        #print(f"login failed: {repr(e)}")
+        traceback.print_exc(file=sys.stdout)
+        exit(1)
 

@@ -32,30 +32,53 @@ class ExternalService(object):
 
 class Docker(object):
     def __init__(self,remote_host=None,useTls=False):
-        self.host_params=""
-        if(remote_host != "host.docker.internal") and not remote_host is None:
-            self.host_params=f"-H {remote_host}"
+        self.host_params=[]
 
-        if(useTls):
-            self.host_params=f"{self.host_params} --tlsverify"
-        if(remote_host is not None):
-            self.remote_host=remote_host.split(':')[0]
-        logger.debug(f"Docker __init__: {self.host_params}")
+        if(remote_host != "host.docker.internal") and not remote_host is None and not remote_host == "":
+            #self.host_params=f"-H {remote_host}"
+            self.host_params=["-H",remote_host,"--tlsverify"]
+
+        #if(useTls):
+            #self.host_params=f"{self.host_params} --tlsverify"
+            #self.host_params=[self.host_params,"--tlsverify"]
+        
+        #if(remote_host is not None):
+        #    self.remote_host=remote_host.split(':')[0]
+        
+        #logger.debug(f"Docker __init__: {self.host_params}")
+    
+    def delete_secrets(self,name_filter:str):
+        cmd=["docker"]+self.host_params+["secret","ls","-q","--filter",f"name={name_filter}","--format={{.Name}}"]
+        logger.debug(cmd)
+        proc=subprocess.run(cmd,capture_output=True,text=True)
+        output=proc.stdout.splitlines()
+        if len(output) > 0:
+            cmd=["docker"]+self.host_params+["secret","rm"]+output
+            logger.debug(cmd)
+            proc=subprocess.run(cmd)
+            if proc.returncode !=0 :
+                raise Exception("Couldn't delete secrets")
+
+        return
     
     def create_secrets_from_files(self,files:List[str],prefix:str=None):
         for f in files:
             sname=os.path.basename(f)
             if(prefix):
                 sname=prefix+sname
-            if subprocess.run(f"docker {self.host_params} secret inspect {sname}",stdout=subprocess.PIPE,stderr=subprocess.PIPE).returncode !=0:
+            if subprocess.run(["docker"]+self.host_params+["secret","inspect",sname],stdout=subprocess.PIPE,stderr=subprocess.PIPE).returncode !=0:
                 logger.warning(f"{sname} secret was not found. Attempting to create.")
-                proc=subprocess.run(f"docker {self.host_params} secret create {sname} {f}")
+                proc=subprocess.run(["docker"]+self.host_params+["secret","create",sname,f])
     
         logger.debug(files)
 
     def shutdown_stack(self,name:str):
-        cmdline=f"docker {self.host_params} stack rm whitesnake"
-        print(f"shutting down stack: {cmdline}")
+        cmdline=["docker"]+self.host_params+["stack","rm",name]
+        
+        #cmdline=f"docker {self.host_params} stack rm whitesnake"
+        #cmdline=["docker","","stack","rm","whitesnake"]
+        logger.debug(os.environ)
+        logger.debug(f"shutting down stack: {cmdline}")
         subprocess.run(cmdline)
         time.sleep(5)
 
@@ -79,12 +102,12 @@ class Docker(object):
         #Make sure all the images are present.
         for retry in range(3):  
             #now wait for services to come up.
-            cmdline=f"docker {self.host_params} stack deploy -c {filename} --with-registry-auth {service_name} "
+            cmdline=["docker"]+self.host_params+["stack","deploy","-c",filename,"--with-registry-auth",service_name]
             logger.debug(f"running: {cmdline}")
             proc=subprocess.run(cmdline)
             urls:List[str]=[]
             if proc.returncode ==0:
-                cmdline=f"docker {self.host_params} stack services {service_name} --format \"{{{{json .}}}}\""
+                cmdline=["docker"]+self.host_params+["stack","services",service_name,"--format","{{json .}}"]
                 logger.debug(f"running: {cmdline}")
                 output:str=subprocess.check_output(cmdline)
                 for l in output.splitlines():
@@ -109,11 +132,16 @@ class Docker(object):
 
     def build_compose_file(self,docker_env:dict,input_files:List[str],outfile:str="docker-compose.yml"):
         #Run the 'config' command so docker-compose will create a single yml file with all of our services/networks etc.
-        stack_files=["-f "+x for x in input_files]        
-        args=' '.join(stack_files)
-        args="docker-compose "+args+" config"
+        stack_files=[]
+        for x in input_files:
+            stack_files.append("-f")
+            stack_files.append(x)
+
+        args=["docker-compose"]+stack_files+["config"]
+        logger.debug(args)
         with open(outfile,'wb') as cfile:
             newenv=os.environ
+            logger.debug(docker_env)
             newenv.update(docker_env)
             logger.debug(f"running: {args}")
             proc=subprocess.run(args,stdout=subprocess.PIPE,env=newenv)

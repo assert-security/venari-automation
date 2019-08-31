@@ -185,6 +185,9 @@ async def main():
     
 if __name__ == '__main__':
      # print(sys.argv[1:])
-     cli()
+     try:
+          cli()
+     except:
+          exit(1)
      #testsite()
 
