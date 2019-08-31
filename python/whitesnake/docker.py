@@ -35,15 +35,10 @@ class Docker(object):
         self.host_params=[]
 
         if(remote_host != "host.docker.internal") and not remote_host is None and not remote_host == "":
-            #self.host_params=f"-H {remote_host}"
             self.host_params=["-H",remote_host,"--tlsverify"]
-
-        #if(useTls):
-            #self.host_params=f"{self.host_params} --tlsverify"
-            #self.host_params=[self.host_params,"--tlsverify"]
-        
-        #if(remote_host is not None):
-        #    self.remote_host=remote_host.split(':')[0]
+     
+        if(remote_host is not None):
+            self.remote_host=remote_host.split(':')[0]
         
         #logger.debug(f"Docker __init__: {self.host_params}")
     

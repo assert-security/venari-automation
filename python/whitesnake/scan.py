@@ -30,16 +30,14 @@ from cryptography.fernet import Fernet
 class WhitesnakeConfigIdp(object):
     def __init__(
         self,
-        token_endpoint:str,
+        external_url:str,
         client_secret:str,
         client_id:str,
-        master_url:str,
-        extra:[]
+        extra:[],
     ):
-        self.token_endpoint=token_endpoint
+        self.external_url=external_url
         self.client_secret=client_secret
         self.client_id=client_id
-        self.master_url=master_url
         self.extra=extra
     @classmethod
     def from_dict(cls, data: dict):
@@ -49,11 +47,17 @@ class WhitesnakeConfigIdp(object):
 class WhitesnakeConfig(object):
     def __init__(
         self,
-        registry_password:str,
-        registry_username:str,
-        docker_password:str,
-        docker_username:str,
-        idp
+        registry_password:str=None,
+        registry_username:str=None,
+        docker_password:str=None,
+        docker_username:str=None,
+        idp=None,
+        swarm_master_hostname:str="docker-desktop",
+        master_url:str="https://host.docker.internal:9000",
+        swarm_manager_hostname:str="host.docker.internal",
+        use_tls:bool=False,
+        stack_name="whitesnake",
+        master_alias="venarimaster"
     ):
         self.registry_password=registry_password
         self.registry_username=registry_username
@@ -62,12 +66,91 @@ class WhitesnakeConfig(object):
         if(isinstance(idp,dict)):
             self.idp=WhitesnakeConfigIdp.from_dict(idp)
         else:
-            self.ididp
-        
+            self.idp=idp
+        self.swarm_master_hostname=swarm_master_hostname
+        self.master_url=master_url
+        self.swarm_manager_hostname=swarm_manager_hostname
+        self.use_tls=use_tls
+        self.stack_name=stack_name
+        self.master_alias=master_alias
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(**data)
+
+    @classmethod
+    def load(cls,key:str=None):
+        settingsFile=os.path.join(Path.home(),'assert-security/whitesnake-auth.json')
+        if os.path.exists(settingsFile):
+            with open(settingsFile) as settings_file:
+                data=settings_file.read()
+                json_data=json.loads(data)
+                config=WhitesnakeConfig.from_dict(json_data) 
+                #decrypt everything
+                if config.registry_password != "":
+                    config.registry_password=config.decrypt(key,config.registry_password)
+                if config.docker_password != "":
+                    config.docker_password=config.decrypt(key,config.docker_password)
+                return config
+        else:
+            return None
+
+    def save(self,key:str):
+        settingsFile=os.path.join(Path.home(),'assert-security/whitesnake-auth.json')
+        self.registry_password=self.encrypt(key,self.registry_password)
+        self.docker_password=self.encrypt(key,self.docker_password)
+        json_data = json.dumps(self.__dict__, default=lambda o: o.__dict__, indent=4)
+        with open(settingsFile,'w') as settings_file:
+            settings_file.write(json_data)
+
+        
+    def login_interactive(self):
+        lastExitCode=1
+        while lastExitCode != 0:
+            if self.docker_username == "":
+                self.docker_username=input("Docker Hub username:")
+            
+            if self.docker_password == "":
+                self.docker_password=getpass.getpass(prompt='Docker Hub password:')    
+            lastExitCode=self.login_dockerhub()
+            if lastExitCode!=0:
+                self.docker_password=""
+                self.docker_username=""
+
+        lastExitCode= 1
+        while lastExitCode != 0:
+            if self.registry_username == "":
+                self.registry_username=input("Assert Registry Username:")
+
+            if self.registry_password=="":
+                self.registry_password=getpass.getpass(prompt='Assert Registry password:')    
+            lastExitCode=self.login_registry()
+            if lastExitCode!=0:
+                self.registry_password=""
+                self.registry_username=""
+
+    
+    def login_dockerhub(self)->int:
+        cmdLine=["docker","login","--username",self.docker_username,"--password-stdin"]
+        proc=subprocess.run(cmdLine,text=True,input=self.docker_password)
+        return proc.returncode
+    
+    def login_registry(self)->int:
+        cmdLine=["docker","login","registry.assertsecurity.io","--username",self.registry_username,"--password-stdin"]
+        proc=subprocess.run(cmdLine,text=True,input=self.registry_password)
+        lastExitCode =proc.returncode
+        return lastExitCode
+
+
+    def encrypt(self,key:str,text:str)->str:
+        cipher_suite = Fernet(key.encode())
+        ciphered_text = cipher_suite.encrypt(text.encode())   #required to be bytes
+        return ciphered_text.decode()
+
+    def decrypt(self,key:str,ciphered_text:str)->str:
+        cipher_suite = Fernet(key.encode())
+        unciphered_text = (cipher_suite.decrypt(ciphered_text.encode())).decode()
+        return unciphered_text
 
 
 logger = logging.getLogger('testdeployment')
@@ -117,7 +200,7 @@ def get_template(template_file: str, template_path)->dict:
         json_data=json.loads(data)
         return json_data
 
-def get_config(testconfig_path):
+def get_test_config(testconfig_path):
     config=None
     with open(testconfig_path, 'r') as yaml_file:
         json_data = yaml_file.read()
@@ -125,18 +208,9 @@ def get_config(testconfig_path):
 
     return config
     
-def import_templates(config: Configuration):
-    logger.debug(f"Attempting to authenticate with {config.master_node}")
-    auth = creds.load_credentials(config.master_node)
-    if(auth is None):
-        raise Exception(f"No stored credentials found for master url \"{config.master_node}\"")
-    logger.info("Authentication successful")
-    logger.debug(auth)
-    #we are authenticated at this point.
-    api = VenariApi(auth,config.master_node)
-    
+def import_templates(config: Configuration,api:VenariApi):
+   
     for application in config.tests:
-        #test:ScanTestDefinition= next (x for x in config.tests if x.name== 'wavesep concurrent')
         if (application):
             try:
                 
@@ -163,13 +237,13 @@ def import_templates(config: Configuration):
                 traceback.print_tb(tb)
                 
 
-def create_secrets(docker:Docker,secrets_folder:str=None):
+def create_secrets(docker:Docker,secret_prefix:str,secrets_folder:str=None):
     if(secrets_folder is None):
         secrets_folder=os.path.join(Path.home(),'assert-security/secrets')
 
-    secret_files=['idp-admin-password','jobnode-client-secret','license.lic','server-ssl-cert.pfx','venari-CA.crt']
+    secret_files=['jobnode-client-secret','license.lic','server-ssl-cert.pfx','venari-CA.crt']
     secret_files=[os.path.join(secrets_folder,x) for x in secret_files]
-    docker.create_secrets_from_files(secret_files)
+    docker.create_secrets_from_files(secret_files,secret_prefix)
     logger.debug(secret_files)
 
 def build_stack(docker:Docker,swarm_hostname:str,config_path:str,tests:List[ScanTestDefinition],docker_env:dict,service_basename="whitesnake"):
@@ -234,97 +308,88 @@ def cli():
 
 @cli.command()
 @click.option('--testconfig',nargs=1,required=True,help="Path to whitesnake configuration file")
-@click.option('--swarmhost',nargs=1,default="host.docker.internal",help="swarm host name")
-@click.option('--tls/--no_tls',help="Use TLS authentication when talking to the docker engine")
 @click.option('--importonly/--no_importonly')
 @click.option('--farm_only/--no_farm_only')
-@click.option('--master',nargs=1,default="https://host.docker.internal:9000")
-@click.option('--idp_url',nargs=1,default="https://host.docker.internal:9002")
 @click.option('--node_count',default=1,help="Number of job node containers to start.")
 @click.option('--secrets_folder',default=None)
 @click.option('--verify_ssl/--no_verify_ssl',default=True)
-@click.option('--swarm_master_hostname',default="docker-desktop")
-@click.option('--master_alias',default='venarimaster',help="the hostname or fqdn of the master node on the overlay network. FQDN is needed when not using self-signed certs.")
-@click.option('--skip_deploy/--deploy')
+@click.option('--encrypt_key',help="Encryption key for stored settings")
 def run(
         testconfig,
-        swarmhost:str,
-        tls:bool,
         importonly:bool,
-        master:str,
-        idp_url:str,
         node_count:int,
         secrets_folder:str,
         verify_ssl:bool,
-        swarm_master_hostname:str,
-        master_alias:str,
         farm_only:bool,
-        skip_deploy: bool,
+        encrypt_key:str
     ):
+    if encrypt_key is None:
+        key=get_or_generateKey(False)
+    else:
+        key=encrypt_key
+
+    config=WhitesnakeConfig.load(key)
+
     VenariRequestor.verify_ssl=verify_ssl
     config_path=os.path.dirname(testconfig)
-    config = get_config(testconfig)
-    master_port=urlparse(master).port    
+    test_config = get_test_config(testconfig)
+    master_port=urlparse(config.master_url).port    
     docker_env={
-        "IDP_EXTERNAL_URL":idp_url,
+        "IDP_EXTERNAL_URL":config.idp.external_url,
         "MASTER_EXTERNAL_PORT":str(master_port),
-        # "NETWORK_EXTERNAL":str(net_external),
         "NODE_COUNT":str(node_count),
-        "MASTER_SWARM_NODE_HOSTNAME":swarm_master_hostname,
-        "MASTER_ALIAS":master_alias
+        "MASTER_SWARM_NODE_HOSTNAME":config.swarm_master_hostname,
+        "MASTER_ALIAS":config.master_alias,
+        "SN_PREFIX":config.stack_name
     }
     logger.debug(f"docker_env: {docker_env}")
 
-    if(not importonly and not skip_deploy):
-        swarm_endpoint=swarmhost
-        if(tls):
-            swarm_endpoint+=":2376"
-        docker=Docker(swarm_endpoint,tls)
-        docker.shutdown_stack("whitesnake")
-        create_secrets(docker,secrets_folder)
+    if(not importonly):
+        docker=get_docker(config.swarm_manager_hostname,config.use_tls)
+        docker.shutdown_stack(config.stack_name)
+        create_secrets(docker,config.stack_name,secrets_folder)
         
         if(not farm_only):
-            build_stack(docker,swarmhost,config_path,config.tests,docker_env)
-            asyncio.run(deploy_stack(docker,config.tests))
+            build_stack(docker,config.swarm_manager_hostname,config_path,test_config.tests,docker_env)
+            asyncio.run(deploy_stack(docker,test_config.tests))
         else:
-            build_stack(docker,swarmhost,config_path,[],docker_env)
+            build_stack(docker,config.swarm_manager_hostname,config_path,[],docker_env)
             asyncio.run(deploy_stack(docker,[]))
     
-    if(master):
-         config.master_node=master
-    
-    if(not farm_only and not skip_deploy):
-        import_templates(config)    
+    test_config.master_node=config.master_url
+    token_endpoint=VenariApi.get_token_endpoint(config.idp.external_url)
+    auth=VenariAuth.login(token_endpoint,config.idp.client_secret,config.idp.client_id,config.idp.extra)
+    if auth is None:
+        raise Exception("Failed to log into idp")
+    api=VenariApi(auth,test_config.master_node)
+
+    if(not farm_only):
+        import_templates(test_config,api)    
 
     #print any errors if tests are not valid.
-    for t in config.tests:
+    for t in test_config.tests:
         if(not t.is_valid):
             logger.warning(f"Test {t.name} is INVALID. Reason: {t.invalid_reason}")
         else:
             logger.info(f"Test {t.name} is VALID")
 
-    # TODO - hook up regression runner here
+# @cli.command()
+# @click.option('--dockerhost',required=False,help="hostname of docker engine. Omit if using local engine.")
+# @click.option('--tls/--no_tls',help="Use TLS authentication when talking to the docker engine")
+# @click.option('--stack_file',help="Idp stack file to deploy")
+# @click.option('--node_hostname',default="docker-desktop",help="hostname of the swarm node to run the idp on.")
+# @click.option('--secrets_folder',default=None)
+# def idp(dockerhost:bool,tls:bool,stack_file:bool,node_hostname,secrets_folder:str):
+#     docker=get_docker(dockerhost,tls)
+#     deploy_idp(docker,stack_file,node_hostname,secrets_folder)
 
-@cli.command()
-@click.option('--dockerhost',required=False,help="hostname of docker engine. Omit if using local engine.")
-@click.option('--tls/--no_tls',help="Use TLS authentication when talking to the docker engine")
-@click.option('--stack_file',help="Idp stack file to deploy")
-@click.option('--node_hostname',default="docker-desktop",help="hostname of the swarm node to run the idp on.")
-@click.option('--secrets_folder',default=None)
-def idp(dockerhost:bool,tls:bool,stack_file:bool,node_hostname,secrets_folder:str):
-    deploy_idp(dockerhost,tls,stack_file,node_hostname,secrets_folder)
-
-def deploy_idp(dockerhost:bool,tls:bool,stack_file:bool,node_hostname:str,secrets_folder:str):
-    host=dockerhost
-    if(tls):
-        host+=":2376"
-    docker=Docker(host,tls)
+def deploy_idp(docker:Docker,stack_file:bool,node_hostname:str,idp_url:str,secrets_folder:str):
     secrets_prefix="identityserver4_"
 
     docker.delete_secrets(secrets_prefix)
-
+    port=urlparse(idp_url).port    
     env={
-        "IDP_EXTERNAL_PORT":"9002",
+        "IDP_EXTERNAL_PORT":f"{port}",
         "SN_PREFIX":secrets_prefix,
         "MASTER_SWARM_NODE_HOSTNAME":node_hostname,
     }
@@ -354,12 +419,10 @@ def deploy_idp(dockerhost:bool,tls:bool,stack_file:bool,node_hostname:str,secret
 #           print(f"login failed: {repr(e)}")
 #           traceback.print_exc(file=sys.stdout)
 
-def get_docker(dockerhost:str)->Docker:
+def get_docker(dockerhost:str,use_tls:bool)->Docker:
     host=dockerhost
-    use_tls=False
-    if dockerhost is not None:
+    if dockerhost is not None and use_tls:
         host+=":2376"
-        use_tls=True
     docker=Docker(host,use_tls)
     return docker
 
@@ -384,109 +447,54 @@ def prompt_password(prompt:str,confirm:bool=False)->str:
     return password
 
 
-def get_or_generateKey()->str:
+def get_or_generateKey(generate:bool=False)->str:
     key_file=os.path.join(Path.home(),'assert-security/whitesnake.key')
     key=None
     if os.path.exists(key_file):
         with open(key_file) as file:
             key=file.read()
             logger.debug("found key")
-    else:
+    elif generate:
         key = Fernet.generate_key().decode()
         with open(key_file,"w") as file:
             logger.debug(f"wrote key to {key_file}")
             file.write(key)
     return key
 
-def encrypt(key:str,text:str)->str:
-    cipher_suite = Fernet(key.encode())
-    ciphered_text = cipher_suite.encrypt(text.encode())   #required to be bytes
-    return ciphered_text.decode()
-
-def decrypt(key:str,ciphered_text:str)->str:
-    cipher_suite = Fernet(key.encode())
-    unciphered_text = (cipher_suite.decrypt(ciphered_text.encode())).decode()
-    return unciphered_text
 
 
 @cli.command()
-@click.option('--dockerhost',required=False,help="hostname of docker engine. Omit if using local engine.")
 @click.option('--idp_stack',required=True)
 @click.option('--encrypt_key',default=None)
-def config(dockerhost:str,idp_stack,encrypt_key:str):
+def config(idp_stack,encrypt_key:str):
+    
     if encrypt_key is None:
-        key=get_or_generateKey()
+        key=get_or_generateKey(True)
     else:
         key=encrypt_key
 
-
-    docker=get_docker(dockerhost)
+    config=WhitesnakeConfig.load(key)
+    config.login_interactive()
+    config.save(key)
+    
+    docker=get_docker(config.swarm_manager_hostname,config.use_tls)
     docker.shutdown_stack("idp")
-
-    settingsFile=os.path.join(Path.home(),'assert-security/whitesnake-auth.json')
-    config:WhitesnakeConfig=None
-    with open(settingsFile) as settings_file:
-        data=settings_file.read()
-        json_data=json.loads(data)
-        config=WhitesnakeConfig.from_dict(json_data) 
-
-    lastExitCode= 1
-
-    while lastExitCode != 0:
-        dockerUsername=config.docker_username
-        dockerPassword=config.docker_password
-        if dockerUsername == "" or dockerPassword =="":
-            if(dockerUsername ==""):
-                dockerUsername=input("Docker Hub username:")
-            dockerPassword=getpass.getpass(prompt='Docker Hub password:')    
-        else:
-            dockerPassword=decrypt(key,config.docker_password)
-        cmdLine=["docker","login","--username",dockerUsername,"--password-stdin"]
-        proc=subprocess.run(cmdLine,text=True,input=dockerPassword)
-        lastExitCode =proc.returncode
-
-    lastExitCode= 1
-    while lastExitCode != 0:
-        registryUsername=config.registry_username
-        registryPassword=config.registry_password
-        if registryPassword=="" or registryUsername=="":
-            if registryUsername=="":
-                registryUsername=input("Assert Registry Username:")
-            registryPassword=getpass.getpass(prompt='Assert Registry password:')    
-        else:
-            registryPassword=decrypt(key,config.registry_password)
-        cmdLine=["docker","login","registry.assertsecurity.io","--username",registryUsername,"--password-stdin"]
-        proc=subprocess.run(cmdLine,text=True,input=registryPassword)
-        lastExitCode =proc.returncode
-
-  
-
-    config.docker_password=encrypt(key,dockerPassword)
-    config.registry_password=encrypt(key,registryPassword)
-
-    json_data = json.dumps(config.__dict__, default=lambda o: o.__dict__, indent=4)
-    
-    logger.debug(json_data)
-    with open(settingsFile,'w') as settings_file:
-        settings_file.write(json_data)
-    
-    
-    deploy_idp(dockerhost,False,idp_stack,node_hostname="docker-desktop",secrets_folder=None)
+    deploy_idp(docker,idp_stack,config.swarm_master_hostname,config.idp.external_url,secrets_folder=None)
     for retry in range(10):
         try:
             if(retry > 1):
                 logger.warning("retrying")
             else:
-                logger.info("connecting")
-            auth=VenariAuth.login(config.idp.token_endpoint,config.idp.client_secret,config.idp.client_id,config.idp.extra)
+                logger.info(f"connecting to {config.external.url}")
+            token_endpoint=VenariApi.get_token_endpoint(config.idp.external_url)    
+            logger.info(f'got token endpoint: {token_endpoint}')
+            logger.info("Logging into idp")
+            auth=VenariAuth.login(token_endpoint,config.idp.client_secret,config.idp.client_id,config.idp.extra)
             logger.info("success")
             break
         except Exception as e:
             logger.error("failed")
             time.sleep(3)
-    
-
-    
 
 
 if __name__ == '__main__':
