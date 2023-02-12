@@ -17,12 +17,10 @@ pipeline{
             }
             steps{
                 script{
-                    withCredentials([usernamePassword(credentialsId: 'devops-api-key', passwordVariable: 'DEVOPS_API_KEY')]) {
-                        pwsh '''
-                            \$ErrorActionPreference = "Stop"
-                            ./run-job-templates.ps1 -apiKey $DEVOPS_API_KEY
-                        '''
-                    }
+                    pwsh '''
+                        \$ErrorActionPreference = "Stop"
+                        ./run-job-templates.ps1
+                    '''
                 }
             }
         }
@@ -33,13 +31,11 @@ pipeline{
                 }
             }
             steps{
-                withCredentials([usernamePassword(credentialsId: 'devops-api-key', passwordVariable: 'DEVOPS_API_KEY')]) {
-                    script{
-                        pwsh '''
-                            \$ErrorActionPreference = "Stop"
-                            ./run-urls.ps1 -apiKey $DEVOPS_API_KEY
-                        '''
-                    }
+                script{
+                    pwsh '''
+                        \$ErrorActionPreference = "Stop"
+                        ./run-urls.ps1
+                    '''
                 }
             }
         }
