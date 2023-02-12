@@ -7,9 +7,6 @@ pipeline{
     )
     stages{
         stage('Run Job Templates'){
-            environment {
-                API_KEY = credentials('devops-api-key')
-            }
             when {
                 expression {
                     return params.START_METHOD=='JOBTEMPLATES-CURRENT'
@@ -17,17 +14,16 @@ pipeline{
             }
             steps{
                 script{
-                    pwsh """
-                        \$ErrorActionPreference = "Stop"
-                        ./run-job-templates.ps1 -apiKey ${API_KEY}
-                    """
+                    withCredentials([usernamePassword(credentialsId: 'devops-api-key', passwordVariable: 'apiKey')]) {
+                        pwsh """
+                            \$ErrorActionPreference = "Stop"
+                            ./run-job-templates.ps1 -apiKey $apiKey
+                        """
+                    }
                 }
             }
         }
         stage('Run URLs'){
-            environment {
-                API_KEY = credentials('devops-api-key')
-            }
             when {
                 expression {
                     return params.START_METHOD=='URLS'
@@ -35,10 +31,12 @@ pipeline{
             }
             steps{
                 script{
-                    pwsh """
-                        \$ErrorActionPreference = "Stop"
-                        ./run-urls.ps1 -apiKey ${API_KEY}
-                    """
+                    withCredentials([usernamePassword(credentialsId: 'devops-api-key', passwordVariable: 'apiKey')]) {
+                        pwsh """
+                            \$ErrorActionPreference = "Stop"
+                            ./run-urls.ps1 -apiKey $apiKey
+                        """
+                    }
                 }
             }
         }
