@@ -15,7 +15,7 @@ pipeline{
         stage('Run Job Templates'){
             when {
                 expression {
-                    return params.START_METHOD=='JOBTEMPLATES-CURRENT'
+                    return params.START_METHOD=='JOBTEMPLATES'
                 }
             }
             steps{
