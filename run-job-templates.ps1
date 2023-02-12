@@ -1,6 +1,6 @@
 param(
     #Start port number
-	[Parameter(Mandatory=$True)]
+	[Parameter(Mandatory=$False)]
     [string]
     $apiKey
 )
@@ -59,6 +59,12 @@ $currentLocation = Get-Location
 $jobTemplatesLocation = "$currentLocation/run-job-templates.csv";
 Write-Host $jobTemplatesLocation;
 $jobTemplatesData = Get-Content -Raw  $jobTemplatesLocation
+
+if (![string]::IsNullOrEmpty($env:DEVOPS_API_KEY) -and [string]::IsNullOrEmpty($apiKey))
+{
+    $apiKey = $env:DEVOPS_API_KEY
+}
+
 $headers =@{
     "x-api-key"=$apiKey;
     "Content-Type"='application/json';

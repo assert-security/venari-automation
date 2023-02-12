@@ -1,6 +1,6 @@
 param(
     #Start port number
-	[Parameter(Mandatory=$True)]
+	[Parameter(Mandatory=$False)]
     [string]
     $apiKey
 )
@@ -81,6 +81,10 @@ $urlsLocation = "$currentLocation/run-urls.csv";
 Write-Host $urlsLocation;
 $urlData = Get-Content -Raw  $urlsLocation
 
+if (![string]::IsNullOrEmpty($env:DEVOPS_API_KEY) -and [string]::IsNullOrEmpty($apiKey))
+{
+    $apiKey = $env:DEVOPS_API_KEY
+}
 $headers =@{
     "x-api-key"=$apiKey;
     "Content-Type"='application/json';
