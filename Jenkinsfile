@@ -32,9 +32,9 @@ pipeline{
                     return params.START_METHOD=='URLS'
                 }
             }
-            steps{
-                script{
-                    withCredentials([usernamePassword(credentialsId: 'devops-api-key', passwordVariable: 'DEVOPS_API_KEY')]) {
+            withCredentials([usernamePassword(credentialsId: 'devops-api-key', passwordVariable: 'DEVOPS_API_KEY')]) {
+                steps{
+                    script{
                         pwsh '''
                             \$ErrorActionPreference = "Stop"
                             ./run-urls.ps1 -apiKey $DEVOPS_API_KEY
