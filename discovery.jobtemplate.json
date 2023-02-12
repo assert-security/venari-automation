@@ -1,0 +1,41 @@
+{
+    "WorkspaceName": "Application",
+    "JobTemplateName": "Discovery",
+    "SettingsType": "ExploiterJobSettingsDbObject",
+    "SettingsTypeDisplayName": "Exploiter",
+    "PatchMethod": 0,
+    "Patch": [
+    ],
+    "SearchablePatches": [
+        {
+            "search": ".EnabledModules[8]",
+            "path": null,
+            "op": "remove",
+            "value": null
+        },
+        {
+            "search": ".EnabledModules[10]",
+            "path": null,
+            "op": "remove",
+            "value": null
+        },
+        {
+            "search": ".EnabledModules[11]",
+            "path": null,
+            "op": "remove",
+            "value": null
+        },
+        {
+            "search": ".EnabledModules[12]",
+            "path": null,
+            "op": "remove",
+            "value": null
+        },
+        {
+            "search": ".EnabledModules[13]",
+            "path": null,
+            "op": "remove",
+            "value": null
+        }
+    ]
+}

@@ -1,13 +1,4 @@
-python/whitesnake/.vscode/
-python/venari-client/.vs/
-python/whitesnake/.vs/
-python/venari-client/.vscode/
-python/whitesnake/.vscode/
 .vs/
-python/whitesnake/docker-compose.yml
-python/whitesnake/reports/
-python/whitesnake/scan-exports/
 .vscode/settings.json
-python/venari-client/venariapi/.vscode/settings.json
 
 .vscode/.ropeproject/objectdb

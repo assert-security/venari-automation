@@ -1,0 +1,51 @@
+{
+    "WorkspaceName": "Application",
+    "JobTemplateName": "Sample",
+    "SettingsType": "ExploiterJobSettingsDbObject",
+    "SettingsTypeDisplayName": "Exploiter",
+    "PatchMethod": 0,
+    "Patch": [
+        {
+            "value": 1,
+            "path": "/ResourceLimits/SamplingLimit",
+            "op": "add"
+        },
+        {
+            "value": 1,
+            "path": "/ResourceLimits/SamplingMode",
+            "op": "replace"
+        }
+    ],
+    "SearchablePatches": [
+        {
+            "search": ".EnabledModules[8]",
+            "path": null,
+            "op": "remove",
+            "value": null
+        },
+        {
+            "search": ".EnabledModules[10]",
+            "path": null,
+            "op": "remove",
+            "value": null
+        },
+        {
+            "search": ".EnabledModules[11]",
+            "path": null,
+            "op": "remove",
+            "value": null
+        },
+        {
+            "search": ".EnabledModules[12]",
+            "path": null,
+            "op": "remove",
+            "value": null
+        },
+        {
+            "search": ".EnabledModules[13]",
+            "path": null,
+            "op": "remove",
+            "value": null
+        }
+    ]
+}
