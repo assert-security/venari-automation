@@ -81,9 +81,9 @@ $urlsLocation = "$currentLocation/run-urls.csv";
 Write-Host $urlsLocation;
 $urlData = Get-Content -Raw  $urlsLocation
 
-if (![string]::IsNullOrEmpty($env:DEVOPS_API_KEY) -and [string]::IsNullOrEmpty($apiKey))
+if (![string]::IsNullOrEmpty($env:DEVOPS_API_KEY_PSW) -and [string]::IsNullOrEmpty($apiKey))
 {
-    $apiKey = $env:DEVOPS_API_KEY
+    $apiKey = $env:DEVOPS_API_KEY_PSW
 }
 $headers =@{
     "x-api-key"=$apiKey;

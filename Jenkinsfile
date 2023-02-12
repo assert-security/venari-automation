@@ -7,7 +7,10 @@ pipeline{
             description:'Optionally deploy the UI to the hotfix or updates location'
         )
     }
-    agent { label 'master' }
+    agent any
+    environment {
+        DEVOPS_API_KEY = credentials('devops-api-key')
+    }
     stages{
         stage('Run Job Templates'){
             when {
