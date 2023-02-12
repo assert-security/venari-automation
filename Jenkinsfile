@@ -4,7 +4,8 @@ pipeline{
         choice(
             choices: ['JOBTEMPLATES', 'URLS'], 
             name: 'START_METHOD',
-            description:'Optionally deploy the UI to the hotfix or updates location'
+            description:'Optionally deploy the UI to the hotfix or updates location',
+            defaultValue: 'URLS', 
         )
     }
     agent { label 'master' }
