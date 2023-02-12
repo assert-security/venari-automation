@@ -32,8 +32,8 @@ pipeline{
                     return params.START_METHOD=='URLS'
                 }
             }
-            withCredentials([usernamePassword(credentialsId: 'devops-api-key', passwordVariable: 'DEVOPS_API_KEY')]) {
-                steps{
+            steps{
+                withCredentials([usernamePassword(credentialsId: 'devops-api-key', passwordVariable: 'DEVOPS_API_KEY')]) {
                     script{
                         pwsh '''
                             \$ErrorActionPreference = "Stop"
