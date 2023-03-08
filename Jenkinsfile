@@ -2,7 +2,7 @@
 pipeline{
     parameters{
         choice(
-            choices: ['JOBTEMPLATES', 'URLS'], 
+            choices: ['URLS', 'JOBTEMPLATES'], 
             name: 'START_METHOD',
             description:'Optionally deploy the UI to the hotfix or updates location'
         )
