@@ -6,6 +6,11 @@ pipeline{
             name: 'START_METHOD',
             description:'Optionally deploy the UI to the hotfix or updates location'
         )
+        string(
+            defaultValue: 'https://localhost:9000', 
+            name: 'MASTER_ADDRESS', 
+            trim: true
+        )
     }
     agent any
     environment {
@@ -20,10 +25,10 @@ pipeline{
             }
             steps{
                 script{
-                    pwsh '''
+                    pwsh """
                         \$ErrorActionPreference = "Stop"
-                        ./run-job-templates.ps1
-                    '''
+                        ./run-job-templates.ps1 ${params.MASTER_ADDRESS}
+                    """
                 }
             }
         }
@@ -35,10 +40,10 @@ pipeline{
             }
             steps{
                 script{
-                    pwsh '''
+                    pwsh """
                         \$ErrorActionPreference = "Stop"
-                        ./run-urls.ps1
-                    '''
+                        ./run-urls.ps1 ${params.MASTER_ADDRESS}
+                    """
                 }
             }
         }

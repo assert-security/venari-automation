@@ -1,5 +1,8 @@
 param(
-    #Start port number
+	[Parameter(Mandatory=$True)]
+    [string]
+    $masterAddress
+
 	[Parameter(Mandatory=$False)]
     [string]
     $apiKey
@@ -55,6 +58,8 @@ function Invoke-Api{
 
 $config = Get-Content -Raw ./run.json | ConvertFrom-Json
 Write-Host $config
+Write-Host "Master Address: $masterAddress"
+
 $jobTemplate = "";
 if ($config.jobType -eq "sample")
 {
@@ -94,7 +99,7 @@ $body=@{
     JobTemplateData=$jobTemplate
 }
 
-$result=Invoke-Api -endpoint "$($config.masterNodeBaseAddress)/api/devops/jobs/bulkstartfromurl" -header $Headers -parameters $body;
+$result=Invoke-Api -endpoint "$masterAddress/api/devops/jobs/bulkstartfromurl" -header $Headers -parameters $body;
 if($result.statusCode -ne 200){
     Write-Host $result
     throw "Failed to start jobs $($result.Error)"
