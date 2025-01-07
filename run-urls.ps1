@@ -1,9 +1,7 @@
 param(
-	[Parameter(Mandatory=$True)]
     [string]
-    $masterAddress
+    $masterAddress="https://localhost:9000"
 
-	[Parameter(Mandatory=$False)]
     [string]
     $apiKey
 )
