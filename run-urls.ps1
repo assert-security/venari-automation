@@ -1,9 +1,6 @@
 param(
-    [string]
-    $masterAddress="https://localhost:9000"
-
-    [string]
-    $apiKey
+    [string]$masterAddress="https://localhost:9000",
+    [string]$apiKey
 )
 
 function Invoke-Api{
