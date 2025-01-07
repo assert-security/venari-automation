@@ -18,19 +18,13 @@
     ],
     "SearchablePatches": [
         {
-            "search": ".EnabledModules[8]",
+            "search": ".EnabledModules[14]",
             "path": null,
             "op": "remove",
             "value": null
         },
         {
-            "search": ".EnabledModules[10]",
-            "path": null,
-            "op": "remove",
-            "value": null
-        },
-        {
-            "search": ".EnabledModules[11]",
+            "search": ".EnabledModules[13]",
             "path": null,
             "op": "remove",
             "value": null
@@ -42,10 +36,46 @@
             "value": null
         },
         {
-            "search": ".EnabledModules[13]",
+            "search": ".EnabledModules[10]",
             "path": null,
             "op": "remove",
             "value": null
+        },
+        {
+            "search": ".EnabledModules[9]",
+            "path": null,
+            "op": "remove",
+            "value": null
+        },
+        {
+            "search": ".EnabledModules[8]",
+            "path": null,
+            "op": "remove",
+            "value": null
+        },
+        {
+            "search": ".EnabledModules[?(@.UniqueID == '8d191100-bbe6-4470-852d-fbcffa782684')].ConfigItems[?(@.Name == 'SendHovers')]",
+            "path": "Value",
+            "op": "replace",
+            "value": "False"
+        },
+        {
+            "search": ".EnabledModules[?(@.UniqueID == 'acd86f2a-b13a-402f-924f-778a9bdd8a91')].ConfigItems[?(@.Name == 'finisher_config_probeStoredXSS')]",
+            "path": "Value",
+            "op": "replace",
+            "value": "False"
+        },
+        {
+            "search": ".EnabledModules[?(@.UniqueID == 'acd86f2a-b13a-402f-924f-778a9bdd8a91')].ConfigItems[?(@.Name == 'finisher_config_probeCookies')]",
+            "path": "Value",
+            "op": "replace",
+            "value": "False"
+        },
+        {
+            "search": ".EnabledModules[?(@.UniqueID == 'acd86f2a-b13a-402f-924f-778a9bdd8a91')].ConfigItems[?(@.Name == 'finisher_config_analyze_loggedouttraffic')]",
+            "path": "Value",
+            "op": "replace",
+            "value": "False"
         }
     ]
 }
