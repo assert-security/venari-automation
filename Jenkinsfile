@@ -6,10 +6,6 @@ pipeline {
             name: 'MASTER_ADDRESS', 
             trim: true
         )
-        string(
-            name: 'API_KEY', 
-            trim: true
-        )
     }
 
     stages {
@@ -19,12 +15,11 @@ pipeline {
                 script {
                     
                     if (params.MASTER_ADDRESS != null 
-                        && params.MASTER_ADDRESS.length() > 0 
-                        && params.API_KEY != null  
-                        && params.API_KEY.length() > 0) {
+                        && params.MASTER_ADDRESS.length() > 0) {
                         try {
 
-                            def apiKey = params.API_KEY
+                            def entry = input( id: 'venariDevOpsAPIKey', message: 'Enter Venari DevOps API Key', parameters: [password(defaultValue: 'value', description: '', name: 'hidden')])
+                            def apiKey = entry.toString();
                             def response =  httpRequest acceptType: 'APPLICATION_JSON',
                                 customHeaders: [[maskValue: true, name: 'X-API-KEY', value: apiKey]], 
                                 url: "${params.MASTER_ADDRESS}/api/devops/applications"
