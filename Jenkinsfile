@@ -2,7 +2,6 @@ pipeline {
     agent any
     parameters{
         string(
-            defaultValue: 'https://localhost:9000', 
             name: 'MASTER_ADDRESS', 
             trim: true
         )
